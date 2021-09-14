@@ -1,20 +1,81 @@
 import re
-import collections
 
 from ._schema import validate_dict_schema, validate_list_schema, validate_leaf_schema
 from . import exceptions
 from . import parsers as _parsers
 
+# the default parsers used by resolve()
+DEFAULT_PARSERS = {
+    "integer": _parsers.arithmetic(int),
+    "float": _parsers.arithmetic(float),
+    "string": str,
+    "boolean": _parsers.logic,
+}
 
-def _explode_dotted_path_string(path):
-    components = path.split(".")
-    return tuple(_parse_path_component(c) for c in components)
+
+def resolve(raw_cfg, schema, external_variables=None, override_parsers=None):
+    """Resolve a raw configuration by interpolating and parsing its entries.
+
+    The raw configuration can be a dictionary, list, or a non-container type;
+    resolution will be done recursively. In any case, the provided schema must
+    match the type of the raw configuration; for example, if the raw
+    configuration is a dictionary, the schema must be a dict schema.
+
+    Parameters
+    ----------
+    raw_cfg
+        The raw configuration.
+    schema
+        The schema describing the types in the raw configuration.
+    external_variables
+        A (nested) dictionary of external variables that may be interpolated into
+        the raw configuration.
+    override_parsers
+        A dictionary mapping leaf type names to parser functions. The parser functions
+        should take the raw value (after interpolation) and convert it to the specified
+        type. If this is not provided, the default parsers are used.
+
+    """
+    if external_variables is None:
+        external_variables = {}
+    elif "self" in external_variables:
+        raise ValueError(
+            'external_variables cannot contain a "self" key; it is reserved.'
+        )
+
+    parsers = _update_parsers(override_parsers)
+    root = _build_configuration_tree(raw_cfg, schema)
+    resolver = _Resolver(root, external_variables, parsers)
+    return root.resolve(resolver)
 
 
-# building configuration trees
-# ----------------------------
+def _update_parsers(overrides):
+    """Override some of the default parsers. 
 
-def _build_configuration_tree(raw_cfg, schema, external_variables, parsers):
+    Returns a dictionary of all parsers."""
+    parsers = DEFAULT_PARSERS
+    if overrides is not None:
+        for type_, parser in overrides.items():
+            parsers[type_] = parser
+    return parsers
+
+
+# configuration trees
+# -------------------
+# A configuration tree is the internal representation of a configuration. The nodes of
+# tree come in three types:
+#
+#   _LeafNode: a leaf node in the tree that can be resolved into a non-container value,
+#       such as an integer.
+#
+#   _DictNode: an internal node that behaves like a dictionary, mapping keys to child
+#       nodes.
+#
+#   _LeafNode: an internal node that behaves like a list, mapping indices to child
+#       nodes.
+
+
+def _build_configuration_tree(raw_cfg, schema):
     """Recursively constructs a configuration tree from a raw configuration.
 
     The raw configuration can be a dictionary, list, or a non-container type. In any
@@ -50,11 +111,13 @@ def _build_configuration_tree(raw_cfg, schema, external_variables, parsers):
 
     return root
 
-# a singleton that marks whether a node in the configuration tree is being resolved
+
+# denotes that a node is currently being resolved
 _PENDING = object()
 
 # denotes that the leaf node has not yet been discovered
 _UNDISCOVERED = object()
+
 
 class _LeafNode:
     """Represents a leaf of the configuration tree.
@@ -64,7 +127,7 @@ class _LeafNode:
     raw
         The "raw" value of the leaf node as it appeared in the raw configuration.
         This can be any type.
-    schema_type : str
+    type_ : str
         A string describing the expected type of this leaf once resolved.
 
     """
@@ -76,15 +139,30 @@ class _LeafNode:
         # The resolved value of the leaf node. There are two special values. If
         # this is _UNDISCOVERED, the resolution process has not yet discovered
         # the leaf node (this is the default value). If this is _PENDING, a
-        # step in the resolution process has started to resolve the leaf. This
+        # step in the resolution process has started to resolve the leaf. Otherwise,
+        # this contains the resolved value.
         self._resolved = _UNDISCOVERED
 
     @classmethod
     def from_raw(cls, raw, leaf_schema):
-        return cls(raw, leaf_schema['type'])
+        """Create a leaf node from the raw configuration and schema."""
+        return cls(raw, leaf_schema["type"])
 
     @property
     def references(self):
+        """Return a list of all of the references in the raw value.
+
+        If the raw value is not a string, there are no references and an empty list is
+        returned.
+
+        Example
+        -------
+
+        >>> leaf = _LeafNode('this is ${self.x} and ${self.y}', 'string')
+        >>> leaf.references
+        ['self.x', 'self.y']
+
+        """
         if not isinstance(self.raw, str):
             return []
 
@@ -92,6 +170,19 @@ class _LeafNode:
         return re.findall(pattern, self.raw)
 
     def resolve(self, resolver):
+        """Resolve the leaf's value by 1) interpolating and 2) parsing.
+
+        Parameters
+        ----------
+        resolver : _Resolver
+            A _Resolver instance. The resolver is responsible for carrying out the 
+            interpolation of references and for doing the actual parsing.
+
+        Returns
+        -------
+        The resolved value.
+
+        """
 
         if self._resolved is _PENDING:
             raise exceptions.ResolutionError("Circular reference")
@@ -110,12 +201,21 @@ class _LeafNode:
 
 
 class _DictNode:
+    """Represents an internal dictionary node in a configuration tree.
+
+    Attributes
+    ----------
+    children
+        A dictionary of child nodes.
+
+    """
 
     def __init__(self, children):
         self.children = children
 
     @classmethod
     def from_raw(cls, dct, dict_schema):
+        """Construct a _DictNode from a raw configuration dictionary and its schema."""
         children = {}
 
         for dct_key, dct_value in dct.items():
@@ -139,13 +239,19 @@ class _DictNode:
         return self.children[key]
 
     def resolve(self, resolver):
-        return {
-            key: child.resolve(resolver)
-            for key, child in self.children.items()
-        }
+        """Recursively resolve the _DictNode into a dictionary."""
+        return {key: child.resolve(resolver) for key, child in self.children.items()}
 
 
 class _ListNode:
+    """Represents an internal list node in a configuration tree.
+
+    Attributes
+    ----------
+    children
+        A list of the node's children.
+
+    """
 
     def __init__(self, children):
         self.children = children
@@ -172,20 +278,40 @@ class _ListNode:
         return self.children[ix]
 
     def resolve(self, resolver):
-        return [
-            child.resolve(resolver)
-            for child in self.children
-        ]
+        """Recursively resolve the _ListNode into a list."""
+        return [child.resolve(resolver) for child in self.children]
+
+
+# resolver
+# --------
+# A resolver is responsible for managing the resolution context. When a leaf node is
+# resolved, it needs to know how to interpolate its references into a final string
+# representation, and how to parse this string representation into its final
+# resolved value. A resolver manages this by keeping track of the configuration tree's
+# root, the external variables, and the parsers for each type.
 
 
 class _Resolver:
-
     def __init__(self, root, external_variables, parsers):
         self.root = root
         self.external_variables = external_variables
         self.parsers = parsers
 
     def interpolate(self, s, reference_path):
+        """Replace a reference path with its resolved value.
+
+        Parameters
+        ----------
+        s : str
+            A configuration string with references to other values.
+        reference_path : str
+            The reference path that will be resolved and replaced.
+
+        Returns
+        -------
+        The interpolated string.
+
+        """
         exploded_path = _explode_dotted_path_string(reference_path)
 
         if exploded_path[0] == "self":
@@ -195,9 +321,6 @@ class _Resolver:
 
         pattern = r"\$\{" + reference_path + r"\}"
         return re.sub(pattern, str(substitution), s)
-
-    def parse(self, s, type_):
-        return self.parsers[type_](s)
 
     def _retrieve_from_root(self, exploded_path):
         try:
@@ -211,98 +334,38 @@ class _Resolver:
         try:
             return _get_path(self.external_variables, exploded_path)
         except KeyError:
-            raise exceptions.ResolutionError(f"Cannot find {exploded_path} in external variables.")
+            raise exceptions.ResolutionError(
+                f"Cannot find {exploded_path} in external variables."
+            )
+
+    def parse(self, s, type_):
+        """Parse the configuration string into its final type."""
+        return self.parsers[type_](s)
 
 
-
-def _parse_path_component(c):
-    if c.isnumeric():
-        return int(c)
-    else:
-        return c
+# helpers
+# -------
 
 
-def _get_path(dct, path):
-    if isinstance(path, str):
-        path = path.split(".")
+def _explode_dotted_path_string(path):
+    """Takes a dotted path string like foo.bar.baz and returns a tuple of parts.
 
-    if len(path) == 1:
-        return dct[path[0]]
-    return _get_path(dct[path[0]], path[1:])
+    If a path component is a number, the corresponding part is an integer.
 
+    """
 
-
-
-def resolve(raw_cfg, schema, external_variables=None, override_parsers=None):
-    if external_variables is None:
-        external_variables = {}
-    elif "self" in external_variables:
-        raise ValueError('external_variables cannot contain a "self" key; it is reserved.')
-
-    parsers = _update_parsers(override_parsers)
-    root = _build_configuration_tree(raw_cfg, schema, external_variables, parsers)
-    resolver = _Resolver(root, external_variables, parsers)
-    return root.resolve(resolver)
-
-
-
-def _update_parsers(overrides):
-    parsers = _parsers.DEFAULT_PARSERS
-    if overrides is not None:
-        for type_, parser in overrides.items():
-            parsers[type_] = parser
-    return parsers
-
-
-
-
-def _resolve_from_self(path, components):
-    exploded_path = _explode_dotted_path_string(path)
-    try:
-        referred_node = _get_path(components.root, exploded_path[1:])
-    except KeyError:
-        raise exceptions.ResolutionError(f"Cannot resolve {path}")
-
-    _resolve_leaf_node(referred_node, components)
-    return referred_node.resolved
-
-
-def _resolve_from_external_variables(path, external_variables):
-    exploded_path = _explode_dotted_path_string(path)
-    try:
-        return _get_path(external_variables, exploded_path)
-    except KeyError:
-        raise exceptions.ResolutionError(f"Cannot find {path} in external_variables.")
-
-
-def _interpolate(s, path, components):
-    exploded_path = _explode_dotted_path_string(path)
-    if exploded_path[0] == "self":
-        substitution = _resolve_from_self(path, components)
-    else:
-        substitution = _resolve_from_external_variables(path, components.external_variables)
-
-    return _substitute_reference(s, path, substitution)
-
-
-def _substitute_reference(s, reference, replacement_value):
-    pattern = r"\$\{" + reference + r"\}"
-    return re.sub(pattern, str(replacement_value), s)
-
-
-def _build_value_store(external_variables, root, parsers):
-
-    def _retrieve_from_self(exploded_path):
-        leaf_node = _get_path(root, exploded_path[1:])
-        leaf_node.resolve(value_store, parsers)
-
-    def value_store(path):
-        exploded_path = _explode_dotted_path_string(path)
-
-        if exploded_path[0] == "self":
-            return _retrieve_from_self(exploded_path)
+    def _parse_path_component(c):
+        if c.isnumeric():
+            return int(c)
         else:
-            return _retrieve_from_external_variables(exploded_path)
+            return c
 
-    return value_store
+    components = path.split(".")
+    return tuple(_parse_path_component(c) for c in components)
 
+
+def _get_path(dct, exploded_path):
+    """Retrieve a dictionary entry using an exploded path."""
+    if len(exploded_path) == 1:
+        return dct[exploded_path[0]]
+    return _get_path(dct[exploded_path[0]], exploded_path[1:])

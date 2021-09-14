@@ -1,4 +1,4 @@
-from dictconfig import resolve, exceptions, parsers
+from dictconfig import resolve, exceptions
 
 from pytest import raises
 
@@ -192,57 +192,18 @@ def test_undefined_placeholder_raises():
         resolve(dct, schema)
 
 
-def test_parse_integer_arithmetic():
+def test_undefined_external_variable_raises():
     # given
     schema = {
         "type": "dict",
-        "schema": {
-            "x": {"type": "integer"},
-            "y": {"type": "integer"},
-            "z": {"type": "integer"},
-        }
+        "schema": {"foo": {"type": "string"}, "bar": {"type": "string"},},
     }
 
     dct = {
-        "x": 10,
-        "y": 20,
-        "z": "${self.x} + ${self.y}"
+        "foo": "${bar}",
+        "bar": "${baz}",
     }
 
     # when
-    result = resolve(dct, schema)
-
-    # then
-    assert result == {
-        "x": 10,
-        "y": 20,
-        "z": 30
-            }
-
-
-def test_parse_boolean_logic():
-    # given
-    schema = {
-        "type": "dict",
-        "schema": {
-            "x": {"type": "boolean"},
-            "y": {"type": "boolean"},
-            "z": {"type": "boolean"},
-        }
-    }
-
-    dct = {
-        "x": True,
-        "y": False,
-        "z": "(${self.x} or ${self.y}) and not ${self.x}"
-    }
-
-    # when
-    result = resolve(dct, schema)
-
-    # then
-    assert result == {
-        "x": True,
-        "y": False,
-        "z": False
-            }
+    with raises(exceptions.ResolutionError):
+        resolve(dct, schema)
