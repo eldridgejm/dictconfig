@@ -122,7 +122,7 @@ def test_with_multiple_redirections():
     assert result["baz"][2] == "hello"
 
 
-def test_with_external_context():
+def test_with_external_external_variables():
     # given
     schema = {
         "type": "dict",
@@ -135,7 +135,7 @@ def test_with_external_context():
     }
 
     # when
-    result = resolve(dct, schema, context={"vars": {"foo": "testing"}})
+    result = resolve(dct, schema, external_variables={"vars": {"foo": "testing"}})
 
     # then
     assert result["bar"] == "testing"
