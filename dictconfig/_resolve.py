@@ -1,17 +1,10 @@
-import enum
 import re
-import typing
 
-from ._schema import validate_key_schema, INTERNAL_TYPES, LEAF_TYPES
+from ._schema import validate_key_schema, validate_value_schema
 from . import exceptions
 
 
 PENDING = object()
-
-
-DEFAULT_PARSERS = {
-
-}
 
 
 def _parse_path_component(c):
@@ -81,14 +74,21 @@ class _LeafNode:
         return re.findall(pattern, self.raw_string)
 
 
-def resolve(dct, key_schema, context=None):
+def resolve(data, schema, context=None):
     if context is None:
         context = {}
     elif 'self' in context:
         raise ValueError('context cannot contain a "self" key; it is reserved.')
 
-    validate_key_schema(key_schema)
-    root = _make_dict_node(dct, key_schema)
+    if isinstance(data, dict):
+        validate_key_schema(schema)
+        root = _make_dict_node(data, schema)
+    elif isinstance(data, list):
+        validate_value_schema(schema)
+        root = _make_list_node(data, schema['schema'])
+    else:
+        root = _LeafNode(data, schema['type'])
+
     return _resolve_node(root, context=context)
 
 
@@ -144,5 +144,3 @@ def _resolve_leaf_node(node, root, context):
 
     node.resolved = s
     return node.resolved
-
-

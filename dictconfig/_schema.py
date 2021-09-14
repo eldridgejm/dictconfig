@@ -19,6 +19,29 @@ The "grammar" of an dictconfig schema is as follows:
         [schema: (<DICT_SCHEMA>|<VALUE_SCHEMA>)
     }
 
+    -----
+
+    <SCHEMA> = (<DICT_SCHEMA> | <LIST_SCHEMA> | <LEAF_SCHEMA>)
+
+    <DICT_SCHEMA> = {
+        type: "dict",
+        schema = {
+            key_1: <SCHEMA>,
+            [key_2: <SCHEMA>,]
+            [key_3: <SCHEMA>,]
+        }
+    }
+
+    <LIST_SCHEMA> = {
+        type: "list",
+        schema: <SCHEMA>
+    }
+
+    <LEAF_SCHEMA> = {
+        type: ("string" | "integer" | "float" | "boolean" | "datetime")
+    }
+
+
 
 If the type of a value is "list" or "dict", then the schema must be provided.
 Furthermore, if the type is "list", the schema must be a VALUE_SCHEMA,
@@ -139,3 +162,94 @@ def _validate_value_schema_schema_field(value_schema, path):
                 "Must be a dict or list to provide a schema.",
                 path,
             )
+
+# ----------
+
+def _basic_schema_checks(schema, path):
+    if not isinstance(schema, dict):
+        raise SchemaError("Must be a dictionary.", path)
+
+    if 'type' not in schema:
+        raise SchemaError('Does not have a "type" field.', path)
+
+
+def validate_schema(schema, path=tuple()):
+    _basic_schema_checks(schema, path)
+
+    if schema['type'] == 'dict':
+        validate_dict_schema(schema, path)
+    elif schema['type'] == 'list':
+        validate_list_schema(schema, path)
+    else:
+        validate_leaf_schema(schema, path)
+
+
+def validate_dict_schema(dict_schema, path=tuple()):
+    """Recursively checks to make sure that a dict schema is valid.
+
+    Parameters
+    ----------
+    schema : dict
+        A schema dictionary for a dict node.
+
+    Raises
+    ------
+    SchemaError
+        If the schema does not validate.
+
+    """
+    _basic_schema_checks(dict_schema, path)
+
+    if dict_schema['type'] != 'dict':
+        raise SchemaError('Type must be "dict".', path)
+
+    if 'schema' not in dict_schema:
+        raise SchemaError('Does not have a "schema" field.', path)
+
+    if not isinstance(dict_schema['schema'], dict):
+        raise SchemaError('"schema" field must be a dictionary.', path)
+
+    for key, child_schema in dict_schema['schema'].items():
+        if not isinstance(key, str):
+            raise SchemaError(f"Key {path}.{key} must be a string.", path)
+
+        validate_schema(child_schema, path + tuple([key]))
+
+
+def validate_list_schema(list_schema, path=tuple()):
+    """Recursively checks to make sure that a list schema is valid.
+
+    Parameters
+    ----------
+    schema : dict
+        A schema dictionary for a list node.
+
+    Raises
+    ------
+    SchemaError
+        If the schema does not validate.
+
+    """
+    _basic_schema_checks(list_schema, path)
+
+    if list_schema['type'] != 'list':
+        raise SchemaError('Type must be "list".', path)
+
+    if 'schema' not in list_schema:
+        raise SchemaError('Does not have a "schema" field.', path)
+
+    if not isinstance(list_schema['schema'], dict):
+        raise SchemaError('"schema" field must be a dictionary.', path)
+
+    validate_schema(list_schema['schema'], path)
+
+
+def validate_leaf_schema(leaf_schema, path=tuple()):
+    _basic_schema_checks(leaf_schema, path)
+
+    valid_types = {
+            "string" , "integer" , "float" , "boolean" , "datetime"
+            }
+
+    if leaf_schema['type'] not in valid_types:
+        raise SchemaError(f'Leaf type {leaf_schema["type"]} is not a valid type.')

@@ -53,6 +53,43 @@ def test_with_dicts():
     assert result['quux']['a'] == 'hello'
 
 
+def test_top_level_list():
+    # given
+    schema = {
+            'type': 'list',
+            'schema': {'type': 'string'}
+            }
+
+    data = [
+            'foo',
+            'bar',
+            'baz'
+            ]
+
+    # when
+    result = resolve(data, schema)
+
+    # then
+    assert result[0] == 'foo'
+    assert result[1] == 'bar'
+    assert result[2] == 'baz'
+
+
+def test_top_level_leaf():
+    # given
+    schema = {
+            'type': 'integer'
+            }
+
+    data = '42'
+
+    # when
+    result = resolve(data, schema)
+
+    # then
+    assert result == '42'
+
+
 def test_with_list():
     # given
     schema = {
