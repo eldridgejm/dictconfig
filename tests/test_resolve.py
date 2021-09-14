@@ -1,4 +1,4 @@
-from dictconfig import resolve, exceptions
+from dictconfig import resolve, exceptions, parsers
 
 from pytest import raises
 
@@ -71,7 +71,7 @@ def test_top_level_leaf():
     result = resolve(data, schema)
 
     # then
-    assert result == "42"
+    assert result == 42
 
 
 def test_with_list():
@@ -190,3 +190,67 @@ def test_undefined_placeholder_raises():
     # when
     with raises(exceptions.ResolutionError):
         resolve(dct, schema)
+
+
+def test_parse_integer_arithmetic():
+    # given
+    schema = {
+        "type": "dict",
+        "schema": {
+            "x": {"type": "integer"},
+            "y": {"type": "integer"},
+            "z": {"type": "integer"},
+        }
+    }
+
+    dct = {
+        "x": 10,
+        "y": 20,
+        "z": "${self.x} + ${self.y}"
+    }
+
+    custom_parsers = {
+        "integer": parsers.arithmetic(int)
+    }
+
+    # when
+    result = resolve(dct, schema, custom_parsers=custom_parsers)
+
+    # then
+    assert result == {
+        "x": 10,
+        "y": 20,
+        "z": 30
+            }
+
+
+def test_parse_boolean_logic():
+    # given
+    schema = {
+        "type": "dict",
+        "schema": {
+            "x": {"type": "boolean"},
+            "y": {"type": "boolean"},
+            "z": {"type": "boolean"},
+        }
+    }
+
+    dct = {
+        "x": True,
+        "y": False,
+        "z": "(${self.x} or ${self.y}) and not ${self.x}"
+    }
+
+    custom_parsers = {
+        "boolean": parsers.logic
+    }
+
+    # when
+    result = resolve(dct, schema, custom_parsers=custom_parsers)
+
+    # then
+    assert result == {
+        "x": True,
+        "y": False,
+        "z": False
+            }

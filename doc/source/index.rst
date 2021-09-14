@@ -115,8 +115,58 @@ Schemata
 ~~~~~~~~
 
 A *schema* defines the type of each of the nodes of the configuration tree.
+The "grammar" of a schema is roughly as follows:
+
+.. code:: text
+
+    <SCHEMA> = (<DICT_SCHEMA> | <LIST_SCHEMA> | <LEAF_SCHEMA>)
+
+    <DICT_SCHEMA> = {
+        type: "dict",
+        schema = {
+            key_1: <SCHEMA>,
+            [key_2: <SCHEMA>,]
+            [key_3: <SCHEMA>,]
+        }
+    }
+
+    <LIST_SCHEMA> = {
+        type: "list",
+        schema: <SCHEMA>
+    }
+
+    <LEAF_SCHEMA> = {
+        type: ("string" | "integer" | "float" | "boolean" | "datetime")
+    }
 
 
+This grammar is a subset of that defined by the Cerberus dict validator.
+Therefore, dictconfig schemas can be parsed by Cerberus.
+
+Here is an example of a valid schema:
+
+.. code:: text
+
+    {
+        'type': 'dict',
+        'schema': {
+            'name': {'type': 'string'},
+            'number': {'type': 'integer'},
+            'videos': {
+                'type': 'list',
+                'schema': {
+                    'type': 'dict',
+                    'schema': {
+                        'title': {'type': 'string'},
+                        'url': {'type': 'url'}
+                    }
+                }
+            }
+        }
+    }
+
+Usage
+-----
 
 Indices and tables
 ==================
