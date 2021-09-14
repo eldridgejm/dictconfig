@@ -67,9 +67,9 @@ def _make_list_node(lst, list_schema):
 
 
 class _LeafNode:
-    def __init__(self, raw_string, type_):
+    def __init__(self, raw_string, leaf_schema):
         self.raw_string = raw_string
-        self.type_ = type_
+        self.type_ = leaf_schema["type"]
         self.resolved = None
 
     @property
