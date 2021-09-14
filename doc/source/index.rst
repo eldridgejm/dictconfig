@@ -14,7 +14,7 @@ A straightforward way of configuring a piece of Python software is to read
 configuration settings from a file (usually JSON or YAML) into a Python
 dictionary. While this is convenient, this approach has some limitations;
 namely, fields within a JSON or YAML file cannot make use of variables, nor can
-they reference one another. 
+they reference one another.
 
 `dictconfig` is a Python package that aims to ease these limitations by
 supporting:
@@ -25,6 +25,9 @@ supporting:
    configuration.
 3. **Domain-specific languages**: Custom parsers can be provided to convert
    configuration options to Python types in a domain-specific way.
+
+Quick Start
+-----------
 
 Below is an example of what `dictconfig` offers. Suppose we have a YAML file
 containing:
@@ -50,10 +53,16 @@ that says that the keys `x`, `y`, and `z` are all integers:
 .. code:: python
 
     schema = {
-        "x": {"type": "integer"},
-        "y": {"type": "integer"},
-        "z": {"type": "integer"}
+        "type": "dict",
+        "schema": {
+            "x": {"type": "integer"},
+            "y": {"type": "integer"},
+            "z": {"type": "integer"}
+        }
     }
+
+As can be seen from above, a schema is a nested dictionary describing the expected
+types of configuration values.
 
 Next, we call :code:`dictconfig.resolve()` to *resolve* the configuration. 
 
@@ -73,19 +82,21 @@ into the definition of `z`, resulting in the string `10 + 32`. The schema tells
 `dictconfig` that the result should be an integer, so an attempt is made to
 convert this string to an `int`. The default string-to-int parser in
 `dictconfig` is capable of evaluating basic arithmetic expressions, and
-therefore produces the value of
+therefore produces the value of 42.
 
-Theory
-------
+Usage
+-----
 
-Before describing how to use `dictconfig`, it is useful to define some key terms
-and to lay down some theory.
+This section describes the usage of the package in greater detail, starting
+with the creation of schemata.
 
-Configuration Trees
-~~~~~~~~~~~~~~~~~~~
+Schemata
+~~~~~~~~
 
-A nested dictionary of configuration options can be thought of as a tree. For example,
-take the following dictionary of options:
+It is necessary to define a schema in order to specify the types of
+configuration values.  But before describing the grammar of a schema, it will
+be useful to reconceptualize the configuration as a tree.  For example, take
+the following dictionary of options:
 
 .. code:: python
 
@@ -102,20 +113,16 @@ The root of the configuration tree is a dictionary with keys `title`,
 `release`, and `authors`. This root has three children: first, the string `"My
 Book"` corresponding to the `title` key. This child node is a leaf. The second
 child is the dictionary corresponding to the `release` key; it is not a leaf
-node. The third child is the list corresponding to the authors; it is also not
-a leaf node.
+node. Instead, it is an *internal* dictionary node with two string-type leaf
+nodes as children. The third child of the root is the list corresponding to the
+authors; it is also not a leaf node. It is again an *internal* list node with
+three string-type leaf nodes as children.
 
-Internal nodes of the configuration tree are either dictionaries or lists. Leaf
-nodes are non-container types, like strings, numbers, etc.
+In general, internal nodes of the configuration tree are either dictionaries or
+lists. Leaf nodes are non-container types, like strings, numbers, etc.
 
-In short, :code:`dictconfig.resolve()` takes in an unresolved configuration tree
-and resolves each of the leaf nodes.
-
-Schemata
-~~~~~~~~
-
-A *schema* defines the type of each of the nodes of the configuration tree.
-The "grammar" of a schema is roughly as follows:
+A *schema* defines the type of each of the nodes (internal and leaf) of the
+configuration tree.  The "grammar" of a schema is roughly as follows:
 
 .. code:: text
 
@@ -136,12 +143,15 @@ The "grammar" of a schema is roughly as follows:
     }
 
     <LEAF_SCHEMA> = {
-        type: ("string" | "integer" | "float" | "boolean" | "datetime")
+        type: ("string" | "integer" | "float" | "boolean" | "datetime" | <custom_type>)
     }
 
+Note that there are several leaf types understood by default -- "string",
+"integer", "float", and so on.  However, custom leaf types may also be
+provided.
 
-This grammar is a subset of that defined by the Cerberus dict validator.
-Therefore, dictconfig schemas can be parsed by Cerberus.
+This grammar is a subset of that defined by the `Cerberus <https://docs.python-cerberus.org/en/stable/>`_ dict validator.
+Therefore, `dictconfig` schemas can be parsed by Cerberus.
 
 Here is an example of a valid schema:
 
@@ -165,8 +175,13 @@ Here is an example of a valid schema:
         }
     }
 
-Usage
------
+Resolving Configurations
+------------------------
+
+Resolving a configuration is done via the :func:`dictconfig.resolve` function:
+
+.. autofunction:: dictconfig.resolve
+
 
 Indices and tables
 ==================

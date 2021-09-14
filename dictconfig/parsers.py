@@ -2,19 +2,10 @@ import datetime
 import ast
 import operator as op
 
-# supported operators
-
-
-DEFAULT_PARSERS = {
-    'integer': int,
-    'float': float,
-    'string': str,
-    'boolean': bool
-}
-
-# from: https://stackoverflow.com/questions/2371436/evaluating-a-mathematical-expression-in-a-string
 def _eval_expr(expr):
     """
+    from: https://stackoverflow.com/questions/2371436/evaluating-a-mathematical-expression-in-a-string
+
     >>> eval_expr('2^6')
     4
     >>> eval_expr('2**6')
@@ -59,3 +50,11 @@ def logic(s):
     if isinstance(s, bool):
         return s
     return bool(_eval_expr(s))
+
+
+DEFAULT_PARSERS = {
+    'integer': arithmetic(int),
+    'float': arithmetic(float),
+    'string': str,
+    'boolean': logic
+}

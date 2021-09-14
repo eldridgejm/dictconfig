@@ -209,12 +209,8 @@ def test_parse_integer_arithmetic():
         "z": "${self.x} + ${self.y}"
     }
 
-    custom_parsers = {
-        "integer": parsers.arithmetic(int)
-    }
-
     # when
-    result = resolve(dct, schema, custom_parsers=custom_parsers)
+    result = resolve(dct, schema)
 
     # then
     assert result == {
@@ -241,12 +237,8 @@ def test_parse_boolean_logic():
         "z": "(${self.x} or ${self.y}) and not ${self.x}"
     }
 
-    custom_parsers = {
-        "boolean": parsers.logic
-    }
-
     # when
-    result = resolve(dct, schema, custom_parsers=custom_parsers)
+    result = resolve(dct, schema)
 
     # then
     assert result == {

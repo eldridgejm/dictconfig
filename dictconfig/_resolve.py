@@ -1,11 +1,133 @@
 import re
+import collections
 
 from ._schema import validate_dict_schema, validate_list_schema, validate_leaf_schema
 from . import exceptions
 from . import parsers as _parsers
 
+# building configuration trees
+# ----------------------------
 
-PENDING = object()
+def _build_configuration_tree(raw_cfg, schema):
+    """Recursively constructs a configuration tree from a raw configuration.
+
+    The raw configuration can be a dictionary, list, or a non-container type. In any
+    case, the provided schema must match the type of the raw configuration; for example,
+    if the raw configuration is a dictionary, the schema must be a dict schema.
+
+    Parameters
+    ----------
+    raw_cfg
+        A dictionary, list, or non-container type representing the "raw", unresolved
+        configuration.
+    schema
+        A schema dictionary describing the types of the configuration tree nodes.
+
+    Returns
+    -------
+        The configuration tree.
+
+    """
+    # construct the configuration tree
+    # the configuration tree is a nested container whose terminal leaf values
+    # are _LeafNodes. "Internal" nodes are dictionaries or lists.
+    args = (raw_cfg, schema)
+    if isinstance(raw_cfg, dict):
+        validate_dict_schema(schema)
+        root = _make_dict_node(*args)
+    elif isinstance(raw_cfg, list):
+        validate_list_schema(schema)
+        root = _make_list_node(*args)
+    else:
+        validate_leaf_schema(schema)
+        root = _make_leaf_node(*args)
+
+    return root
+
+# a singleton that marks whether a node in the configuration tree is being resolved
+_PENDING = object()
+
+# denotes that the leaf node has not yet been discovered
+_UNDISCOVERED = object()
+
+class _LeafNode:
+    """Represents a leaf of the configuration tree.
+
+    Attributes
+    ----------
+    raw
+        The "raw" value of the leaf node as it appeared in the raw configuration.
+        This can be any type.
+    schema_type : str
+        A string describing the expected type of this leaf once resolved.
+
+    """
+
+    def __init__(self, raw, type_):
+        self.raw = raw
+        self.type_ = type_
+
+        # The resolved value of the leaf node. There are two special values. If
+        # this is _UNDISCOVERED, the resolution process has not yet discovered
+        # the leaf node (this is the default value). If this is _PENDING, a
+        # step in the resolution process has started to resolve the leaf. This
+        # can be used to detect cycles.
+        self.resolved = _UNDISCOVERED
+
+    @property
+    def references(self):
+        if not isinstance(self.raw, str):
+            return []
+
+        pattern = r"\$\{(.+?)\}"
+        return re.findall(pattern, self.raw)
+
+
+def _make_dict_node(dct, dict_schema):
+    """Construct an internal dictionary node and recurse on the children."""
+    result = {}
+
+    for dct_key, dct_value in dct.items():
+        try:
+            child_schema = dict_schema["schema"][dct_key]
+        except KeyError:
+            child_schema = {"type": "string"}
+
+        args = (dct_value, child_schema)
+
+        if child_schema["type"] == "dict":
+            result[dct_key] = _make_dict_node(*args)
+        elif child_schema["type"] == "list":
+            result[dct_key] = _make_list_node(*args)
+        else:
+            result[dct_key] = _make_leaf_node(*args)
+
+    return result
+
+
+def _make_list_node(lst, list_schema):
+    """Make an internal list node from a raw list and recurse on the children."""
+    child_schema = list_schema["schema"]
+
+    result = []
+    for lst_value in lst:
+        args = (lst_value, child_schema)
+        if child_schema["type"] == "dict":
+            r = _make_dict_node(*args)
+        elif child_schema["type"] == "list":
+            r = _make_list_node(*args)
+        else:
+            r = _make_leaf_node(*args)
+        result.append(r)
+    return result
+
+
+def _make_leaf_node(s, leaf_schema):
+    """Make a leaf node. Helper function simply creates an instance of _LeafNode."""
+    return _LeafNode(s, leaf_schema['type'])
+
+
+
 
 def _parse_path_component(c):
     if c.isnumeric():
@@ -29,150 +151,85 @@ def _get_path(dct, path):
 
 
 
-class _LeafNode:
-    def __init__(self, raw, type_):
-        self.raw = raw
-        self.type_ = type_
-        self.resolved = None
 
-    @property
-    def references(self):
-        if not isinstance(self.raw, str):
-            return []
-
-        pattern = r"\$\{(.+?)\}"
-        return re.findall(pattern, self.raw)
-
-def _make_dict_node(dct, dict_schema):
-    """Construct an internal dictionary node from a dictionary and its key schema."""
-    result = {}
-
-    for dct_key, dct_value in dct.items():
-        try:
-            child_schema = dict_schema["schema"][dct_key]
-        except KeyError:
-            child_schema = {"type": "string"}
-
-        args = (dct_value, child_schema)
-
-        if child_schema["type"] == "dict":
-            result[dct_key] = _make_dict_node(*args)
-        elif child_schema["type"] == "list":
-            result[dct_key] = _make_list_node(*args)
-        else:
-            result[dct_key] = _make_leaf_node(*args)
-
-    return result
-
-
-def _make_list_node(lst, list_schema):
-    child_schema = list_schema["schema"]
-
-    result = []
-    for lst_value in lst:
-        args = (lst_value, child_schema)
-        if child_schema["type"] == "dict":
-            r = _make_dict_node(*args)
-        elif child_schema["type"] == "list":
-            r = _make_list_node(*args)
-        else:
-            r = _make_leaf_node(*args)
-        result.append(r)
-    return result
-
-
-def _make_leaf_node(s, leaf_schema):
-    return _LeafNode(s, leaf_schema['type'])
-
-
-def resolve(data, schema, context=None, custom_parsers=None):
+def resolve(data, schema, context=None, override_parsers=None):
     if context is None:
         context = {}
     elif "self" in context:
         raise ValueError('context cannot contain a "self" key; it is reserved.')
 
+    parsers = _update_parsers(override_parsers)
+
+    root = _build_configuration_tree(data, schema)
+    return _resolve_configuration_tree(root, _Components(root=root, context=context, parsers=parsers))
+
+
+_Components = collections.namedtuple('_Components', 'root context parsers')
+
+
+def _update_parsers(overrides):
     parsers = _parsers.DEFAULT_PARSERS
-    if custom_parsers is not None:
-        for type_, parser in custom_parsers.items():
+    if overrides is not None:
+        for type_, parser in overrides.items():
             parsers[type_] = parser
-
-    args = (data, schema)
-    if isinstance(data, dict):
-        validate_dict_schema(schema)
-        root = _make_dict_node(*args)
-    elif isinstance(data, list):
-        validate_list_schema(schema)
-        root = _make_list_node(*args)
-    else:
-        validate_leaf_schema(schema)
-        root = _make_leaf_node(*args)
-
-    return _resolve_node(root, parsers, context=context)
+    return parsers
 
 
-def _resolve_node(node, parsers, root=None, context=None):
-    if root is None:
-        root = node
 
-    if context is None:
-        context = {}
 
-    args = (node, parsers, root, context)
+def _resolve_configuration_tree(node, components):
     if isinstance(node, dict):
-        return _resolve_dict_node(*args)
+        return _resolve_dict_node(node, components)
     elif isinstance(node, list):
-        return _resolve_list_node(*args)
+        return _resolve_list_node(node, components)
     else:
-        return _resolve_leaf_node(*args)
+        return _resolve_leaf_node(node, components)
 
 
-def _resolve_dict_node(node, parsers, root, context):
+def _resolve_dict_node(node, components):
     return {
-        key: _resolve_node(child_node, parsers, root, context)
+        key: _resolve_configuration_tree(child_node, components)
         for key, child_node in node.items()
     }
 
+def _resolve_list_node(node, components):
+    return [_resolve_configuration_tree(child_node, components) for child_node in node]
 
-def _resolve_list_node(node, parsers, root, context):
-    return [_resolve_node(child_node, parsers, root, context) for child_node in node]
 
 
-def _resolve_leaf_node(node, parsers, root, context):
+
+
+def _resolve_leaf_node(node, components):
     string_representation = node.raw
 
-    if node.resolved is PENDING:
+    if node.resolved is _PENDING:
         raise exceptions.ResolutionError("Circular reference")
 
-    if node.resolved is not None:
+    if node.resolved is not _UNDISCOVERED:
         return node.resolved
 
-    node.resolved = PENDING
+    node.resolved = _PENDING
 
-    for path in node.references:
-        string_representation = _interpolate(string_representation, parsers, root, context, path)
+    for reference in node.references:
+        string_representation = _interpolate(string_representation, reference, components)
 
-    parser = parsers[node.type_]
+    parser = components.parsers[node.type_]
     node.resolved = parser(string_representation)
     return node.resolved
 
 
-def _fill_placeholder(s, reference, replacement_value):
-    pattern = r"\$\{" + reference + r"\}"
-    return re.sub(pattern, str(replacement_value), s)
-
-
-def _interpolate_from_self(path, parsers, root, context):
+def _resolve_from_self(path, components):
     exploded_path = _explode_dotted_path_string(path)
     try:
-        referred_node = _get_path(root, exploded_path[1:])
+        referred_node = _get_path(components.root, exploded_path[1:])
     except KeyError:
         raise exceptions.ResolutionError(f"Cannot resolve {path}")
 
-    _resolve_leaf_node(referred_node, parsers, root, context)
+    _resolve_leaf_node(referred_node, components)
     return referred_node.resolved
 
 
-def _interpolate_from_context(path, context):
+def _resolve_from_context(path, context):
     exploded_path = _explode_dotted_path_string(path)
     try:
         return _get_path(context, exploded_path)
@@ -180,11 +237,16 @@ def _interpolate_from_context(path, context):
         raise exceptions.ResolutionError(f"Cannot find {path} in context.")
 
 
-def _interpolate(s, parsers, root, context, path):
+def _interpolate(s, path, components):
     exploded_path = _explode_dotted_path_string(path)
     if exploded_path[0] == "self":
-        substitution = _interpolate_from_self(path, parsers, root, context)
+        substitution = _resolve_from_self(path, components)
     else:
-        substitution = _interpolate_from_context(path, context)
+        substitution = _resolve_from_context(path, components.context)
 
-    return _fill_placeholder(s, path, substitution)
+    return _substitute_reference(s, path, substitution)
+
+
+def _substitute_reference(s, reference, replacement_value):
+    pattern = r"\$\{" + reference + r"\}"
+    return re.sub(pattern, str(replacement_value), s)
