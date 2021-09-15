@@ -1,4 +1,5 @@
 import re
+import datetime
 
 from ._schema import validate_dict_schema, validate_list_schema, validate_leaf_schema
 from . import exceptions
@@ -10,6 +11,8 @@ DEFAULT_PARSERS = {
     "float": _parsers.arithmetic(float),
     "string": str,
     "boolean": _parsers.logic,
+    "date": datetime.date.fromisoformat,
+    "datetime": datetime.datetime.fromisoformat,
 }
 
 

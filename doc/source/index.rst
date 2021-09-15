@@ -1,8 +1,3 @@
-.. dictconfig documentation master file, created by
-   sphinx-quickstart on Mon Sep 13 23:56:58 2021.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 Welcome to dictconfig's documentation!
 ======================================
 
@@ -181,6 +176,24 @@ Resolving Configurations
 Resolving a configuration is done via the :func:`dictconfig.resolve` function:
 
 .. autofunction:: dictconfig.resolve
+
+Parsers
+-------
+
+.. automodule:: dictconfig.parsers
+
+.. autosummary::
+
+    arithmetic
+    logic
+    smartdate
+    smartdatetime
+
+.. autofunction:: arithmetic
+.. autofunction:: logic
+.. autofunction:: smartdate
+.. autofunction:: smartdatetime
+
 
 
 Indices and tables

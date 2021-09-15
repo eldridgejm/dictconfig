@@ -14,3 +14,7 @@ class SchemaError(Error):
 
 class ResolutionError(Error):
     """An error while resolving an dictconfig."""
+
+
+class ParseError(ResolutionError):
+    """Could not parse the configuration value."""

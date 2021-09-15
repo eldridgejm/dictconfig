@@ -60,7 +60,7 @@ This is an example dictconfig schema that will be validated.
 from .exceptions import SchemaError
 
 
-LEAF_TYPES = {"string", "integer", "float", "boolean", "datetime"}
+LEAF_TYPES = {"string", "integer", "float", "boolean", "date", "datetime"}
 INTERNAL_TYPES = {"dict", "list"}
 
 
@@ -147,4 +147,6 @@ def validate_leaf_schema(leaf_schema, path=tuple()):
     _basic_schema_checks(leaf_schema, path)
 
     if leaf_schema["type"] not in LEAF_TYPES:
-        raise SchemaError(f'Leaf type {leaf_schema["type"]} is not a valid type.', path)
+        raise SchemaError(
+            f'Leaf type "{leaf_schema["type"]}" is not a valid type.', path
+        )

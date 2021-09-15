@@ -1,4 +1,6 @@
-from dictconfig import resolve, exceptions
+import datetime
+
+from dictconfig import resolve, exceptions, parsers
 
 from pytest import raises
 
@@ -207,3 +209,119 @@ def test_undefined_external_variable_raises():
     # when
     with raises(exceptions.ResolutionError):
         resolve(dct, schema)
+
+
+# parsing
+# -------
+
+
+def test_parse_integer_arithmetic():
+    # given
+    schema = {
+        "type": "dict",
+        "schema": {
+            "x": {"type": "integer"},
+            "y": {"type": "integer"},
+            "z": {"type": "integer"},
+        },
+    }
+
+    dct = {"x": 10, "y": 20, "z": "${self.x} + ${self.y}"}
+
+    # when
+    result = resolve(dct, schema)
+
+    # then
+    assert result == {"x": 10, "y": 20, "z": 30}
+
+
+def test_parse_boolean_logic():
+    # given
+    schema = {
+        "type": "dict",
+        "schema": {
+            "x": {"type": "boolean"},
+            "y": {"type": "boolean"},
+            "z": {"type": "boolean"},
+        },
+    }
+
+    dct = {"x": True, "y": False, "z": "(${self.x} or ${self.y}) and not ${self.x}"}
+
+    # when
+    result = resolve(dct, schema)
+
+    # then
+    assert result == {"x": True, "y": False, "z": False}
+
+
+def test_parse_dates():
+    # given
+    schema = {"type": "dict", "schema": {"x": {"type": "date"}, "y": {"type": "date"},}}
+
+    dct = {"x": "2021-01-01", "y": "7 days after ${self.x}"}
+
+    overrides = {"date": parsers.smartdate}
+
+    # when
+    result = resolve(dct, schema, override_parsers=overrides)
+
+    # then
+    assert result["y"] == datetime.date(2021, 1, 8)
+
+
+def test_parse_dates_and_integers():
+    # given
+    schema = {
+        "type": "dict",
+        "schema": {
+            "x": {"type": "date"},
+            "parts": {
+                "type": "dict",
+                "schema": {"a": {"type": "integer"}, "b": {"type": "integer"},},
+            },
+            "y": {"type": "integer"},
+            "z": {"type": "date"},
+        },
+    }
+
+    dct = {
+        "x": "2021-01-01",
+        "parts": {"a": 1, "b": 6,},
+        "y": "${self.parts.a} + ${self.parts.b}",
+        "z": "${self.y} days after ${self.x}",
+    }
+
+    overrides = {"date": parsers.smartdate}
+
+    # when
+    result = resolve(dct, schema, override_parsers=overrides)
+
+    # then
+    assert result["z"] == datetime.date(2021, 1, 8)
+
+
+def test_with_multiple_dates():
+    # given
+    schema = {
+        "type": "dict",
+        "schema": {
+            "x": {"type": "date"},
+            "y": {"type": "datetime"},
+            "z": {"type": "date"},
+        },
+    }
+
+    dct = {
+        "x": "2021-01-01",
+        "y": "7 days after ${self.z} 23:59:00",
+        "z": "3 days after ${self.x}",
+    }
+
+    overrides = {"date": parsers.smartdate, "datetime": parsers.smartdatetime}
+
+    # when
+    result = resolve(dct, schema, override_parsers=overrides)
+
+    # then
+    assert result["y"] == datetime.datetime(2021, 1, 11, 23, 59)
