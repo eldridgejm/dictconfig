@@ -1,5 +1,28 @@
+"""Provides the resolve() function for resolving raw configurations.
+
+A raw configuration is a dictionary, list, or non-container type. If it is a
+dictionary, its keys are strings and values are, recursively, raw
+configurations. If it is a list, its entries are raw configurations.
+
+The code in this module works by building a tree representation of the raw
+configuration.  Dictionaries and lists become internal nodes of the tree, and
+non-container values become leaf nodes. These nodes are represented by the
+_DictNode, _ListNode, and _LeafNode classes below.
+
+Each node type has a `.resolve()` method that knows how to resolve the node
+itself and recursively delegates the resolution of the child nodes. For
+instance, _DictNode.resolve() returns a dictionary whose values are resolved
+child nodes. The "real work" occurs in two key places. First is _LeafNode.resolve().
+Here, the resolution of a leaf node is orchestrated: references to other leaf
+nodes and to external variables are interpolated and the parser is applied. The
+actual implementation of the interpolating code is in _Resolver; an instance of
+the _Resolver is passed to a node when it is resolved. The reason for involving the
+_Resolver class is that individual nodes know little about the world: they do not know
+the root of their tree or what parsers are available. While this information could be
+supplied when the node is instantiated, it is thought cleaner to keep it separate.
+
+"""
 import re
-import datetime
 
 from ._schema import validate_dict_schema, validate_list_schema, validate_leaf_schema
 from . import exceptions
@@ -11,8 +34,8 @@ DEFAULT_PARSERS = {
     "float": _parsers.arithmetic(float),
     "string": str,
     "boolean": _parsers.logic,
-    "date": datetime.date.fromisoformat,
-    "datetime": datetime.datetime.fromisoformat,
+    "date": _parsers.smartdate,
+    "datetime": _parsers.smartdatetime
 }
 
 
@@ -32,7 +55,9 @@ def resolve(raw_cfg, schema, external_variables=None, override_parsers=None):
         The schema describing the types in the raw configuration.
     external_variables
         A (nested) dictionary of external variables that may be interpolated into
-        the raw configuration.
+        the raw configuration. External variables can be referred to by dotted paths in
+        the configuration. For example, :code:`${foo.bar.baz}` will reference the value
+        42 in the dictionary :code:`{'foo': {'bar': {'baz': 42}}}`.
     override_parsers
         A dictionary mapping leaf type names to parser functions. The parser functions
         should take the raw value (after interpolation) and convert it to the specified

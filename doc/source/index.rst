@@ -14,12 +14,15 @@ they reference one another.
 `dictconfig` is a Python package that aims to ease these limitations by
 supporting:
 
-1. **Interpolation**: Configuration values can reference variables supplied by
-   the program reading the configuration.
-2. **References**: The configuration can reference other settings within the same
-   configuration.
+1. **External Variables**: Configuration values can reference external
+   variables supplied by the program reading the configuration.
+2. **Internal References**: The configuration can reference other settings
+   within the same configuration.
 3. **Domain-specific languages**: Custom parsers can be provided to convert
-   configuration options to Python types in a domain-specific way.
+   configuration options to Python types in a domain-specific way. `dateconfig`
+   comes with parsers for interpreting arithmetic expressions (e.g., `"(4 + 6) / 2"`),
+   logical expressions (e.g., `"True and (False or True)"`), and relative datetimes
+   (e.g., `"7 days after 2021-10-10"`).
 
 Quick Start
 -----------
@@ -31,19 +34,26 @@ containing:
 
    x: 10
    y: 32
-   z: ${x} + ${y}
-
+   z: ${self.x} + ${self.y}
+   released: ${foo.bar}
+   due: ${self.x} days after ${self.released}
 
 Intuitively, we want the value of `z` to be the sum of `x` and `y` (i.e., 42).
-If we read this into a Python dictionary :code:`dct` using any standard YAML
-loader, the value of `z` will simply be the string above; it will *not* be the
-number 42.
+In this example, :code:`${foo.bar}` refers to an "external variable"
+provided by the software that reads the config.  Apparently, we want the value
+of `due` to resolve to ten days after this release date.
+
+However, if we read this YAML into a Python dictionary :code:`dct` using any
+standard YAML loader, the value of `z` will simply be the string above; it will
+*not* be the number 42. Likewise, the value of the `released` and `due` fields
+will not be as desired.
 
 With `dictconfig`'s interpolation and reference features, however, we can resolve
 the configuration above into what we expect. First, we must specify a *schema*.
 A *schema* is a Python dictionary that tells `dictconfig` what types to expect
 for each configuration option. Here is a schema for this configuration file
-that says that the keys `x`, `y`, and `z` are all integers:
+that says that the keys `x`, `y`, and `z` are all integers and that `released`
+and `due` are dates:
 
 .. code:: python
 
@@ -52,24 +62,34 @@ that says that the keys `x`, `y`, and `z` are all integers:
         "schema": {
             "x": {"type": "integer"},
             "y": {"type": "integer"},
-            "z": {"type": "integer"}
+            "z": {"type": "integer"},
+            "released": {"type": "date"},
+            "due": {"type": "date"}
         }
     }
 
 As can be seen from above, a schema is a nested dictionary describing the expected
-types of configuration values.
+types of configuration values. For a more precise definition of a schema, see the
+`Schemata`_ section below.
 
-Next, we call :code:`dictconfig.resolve()` to *resolve* the configuration. 
+Next, we call :code:`dictconfig.resolve()` to *resolve* the configuration. We provide
+a dictionary of external variables that can be resolved.
 
 
 .. code:: python
 
    >>> import dictconfig
-   >>> dictconfig.resolve(dct, schema)
+   >>> external_variables = {
+       'foo': {'bar': '2021-10-01', 'baz': None},
+       'bar': 42
+   }
+   >>> dictconfig.resolve(dct, schema, external_variables=external_variables)
    {
-       x: 10,
-       y: 32,
-       z: 42
+       "x": 10,
+       "y": 32,
+       "z": 42,
+       "released": datetime.date(2021, 10, 1),
+       "due": datetime.date(2021, 10, 11),
    }
 
 During resolution, the values of `x` and `y` are looked up and interpolated
@@ -78,6 +98,12 @@ into the definition of `z`, resulting in the string `10 + 32`. The schema tells
 convert this string to an `int`. The default string-to-int parser in
 `dictconfig` is capable of evaluating basic arithmetic expressions, and
 therefore produces the value of 42.
+
+Likewise, the reference to :code:`${foo.bar}` is resolved from the external variables
+and converted to a date as per the schema. The `due` field is resolved by referring to
+the `released` field. The default date parser is smart enough to handle
+relative dates written as above. See the `Parsers`_ section below for more
+information on the parsers.
 
 Usage
 -----
@@ -138,49 +164,76 @@ configuration tree.  The "grammar" of a schema is roughly as follows:
     }
 
     <LEAF_SCHEMA> = {
-        type: ("string" | "integer" | "float" | "boolean" | "datetime" | <custom_type>)
+        type: ("string" | "integer" | "float" | "boolean" | "datetime" )
     }
-
-Note that there are several leaf types understood by default -- "string",
-"integer", "float", and so on.  However, custom leaf types may also be
-provided.
 
 This grammar is a subset of that defined by the `Cerberus <https://docs.python-cerberus.org/en/stable/>`_ dict validator.
 Therefore, `dictconfig` schemas can be parsed by Cerberus.
 
-Here is an example of a valid schema:
+Here is an example of a valid schema for the configuration dictionary from
+the start of this section:
 
 .. code:: text
 
     {
         'type': 'dict',
         'schema': {
-            'name': {'type': 'string'},
-            'number': {'type': 'integer'},
-            'videos': {
-                'type': 'list',
+            'title': {'type': 'string'},
+            'release': {
+                'type': 'dict',
                 'schema': {
-                    'type': 'dict',
-                    'schema': {
-                        'title': {'type': 'string'},
-                        'url': {'type': 'url'}
-                    }
+                    'date': 'date',
+                    'via': 'string'
                 }
+            },
+            'authors': {
+                'type': 'list',
+                'schema': {'type': 'string'}
             }
         }
     }
 
 Resolving Configurations
-------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 Resolving a configuration is done via the :func:`dictconfig.resolve` function:
 
 .. autofunction:: dictconfig.resolve
 
-Parsers
--------
+Resolving a leaf value in a configuration involves two steps: interpolation and
+parsing.  In the easiest case, a leaf has no references to other fields or
+external variables. In this case, the leaf's raw value is passed through the
+appropriate parser as determined by the schema in order to convert it to its
+resolved value.
 
-.. automodule:: dictconfig.parsers
+On the other hand, if the leaf value contains references to other fields or
+external variables, these must be interpolated before parsing. If another
+configuration field is referred to, it is first resolved recursively. The
+resolved value of the field (or external variable) is then cast back into a
+string and interpolated into the original leaf node's value. Only then is the
+parser applied to convert the leaf node's string into the final resolved value.
+
+In summary, the resolution of leaf nodes occurs via recursive string interpolation
+followed by parsing into the final type.
+
+Parsers
+~~~~~~~
+
+.. currentmodule:: dictconfig.parsers
+
+A parser is a function that accepts a raw value -- often, but not necessarily a
+string -- and returns a resolved value with the appropriate type.
+
+The default parsers are as follows:
+
+- "integer": The :func:`arithmetic` parser with type `int`.
+- "float": The :func:`arithmetic` parser with type `float`.
+- "string": No parser needed (left as string).
+- "boolean": The :func:`logic` parser.
+- "date": The :func:`smartdate` parser.
+- "datetime": The :func:`smartdatetime` parser.
+
+All available parsers in :mod:`dictconfig.parsers` are shown below:
 
 .. autosummary::
 
