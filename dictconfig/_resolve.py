@@ -35,7 +35,7 @@ DEFAULT_PARSERS = {
     "string": str,
     "boolean": _parsers.logic,
     "date": _parsers.smartdate,
-    "datetime": _parsers.smartdatetime
+    "datetime": _parsers.smartdatetime,
 }
 
 
@@ -81,7 +81,7 @@ def _update_parsers(overrides):
     """Override some of the default parsers. 
 
     Returns a dictionary of all parsers."""
-    parsers = DEFAULT_PARSERS
+    parsers = DEFAULT_PARSERS.copy()
     if overrides is not None:
         for type_, parser in overrides.items():
             parsers[type_] = parser
@@ -354,7 +354,8 @@ class _Resolver:
         try:
             referred_leaf_node = _get_path(self.root, exploded_path[1:])
         except KeyError:
-            raise exceptions.ResolutionError(f"Cannot resolve {exploded_path}")
+            path = "${" + ".".join(exploded_path) + "}"
+            raise exceptions.ResolutionError(f"Cannot resolve {path}")
 
         return referred_leaf_node.resolve(self)
 
@@ -368,7 +369,12 @@ class _Resolver:
 
     def parse(self, s, type_):
         """Parse the configuration string into its final type."""
-        return self.parsers[type_](s)
+        try:
+            parser = self.parsers[type_]
+        except KeyError:
+            raise exceptions.ResolutionError(f'No parser for type "{type_}".')
+
+        return parser(s)
 
 
 # helpers

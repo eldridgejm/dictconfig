@@ -325,3 +325,43 @@ def test_with_multiple_dates():
 
     # then
     assert result["y"] == datetime.datetime(2021, 1, 11, 23, 59)
+
+
+def test_custom_leaf_type_uses_correct_parser():
+    # given
+    schema = {
+        "type": "dict",
+        "schema": {"x": {"type": "string"}, "y": {"type": "foo"},},
+    }
+
+    dct = {
+        "x": "2021-01-01",
+        "y": "7 days after 23:59:00",
+    }
+
+    overrides = {"foo": lambda _: "hello"}
+
+    # when
+    result = resolve(dct, schema, override_parsers=overrides)
+
+    # then
+    assert result["y"] == "hello"
+
+
+def test_custom_leaf_type_raises_if_no_parser_provided():
+    # given
+    schema = {
+        "type": "dict",
+        "schema": {"x": {"type": "string"}, "y": {"type": "foo"},},
+    }
+
+    dct = {
+        "x": "2021-01-01",
+        "y": "7 days after 23:59:00",
+    }
+
+    overrides = {"notfoo": (lambda _: "okidoke")}
+
+    # when
+    with raises(exceptions.ResolutionError):
+        result = resolve(dct, schema, override_parsers=overrides)

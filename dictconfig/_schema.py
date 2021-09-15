@@ -145,8 +145,3 @@ def validate_list_schema(list_schema, path=tuple()):
 
 def validate_leaf_schema(leaf_schema, path=tuple()):
     _basic_schema_checks(leaf_schema, path)
-
-    if leaf_schema["type"] not in LEAF_TYPES:
-        raise SchemaError(
-            f'Leaf type "{leaf_schema["type"]}" is not a valid type.', path
-        )

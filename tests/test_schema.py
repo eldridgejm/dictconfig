@@ -81,11 +81,11 @@ def test_list_schema_must_have_child_schema():
         validate_schema(schema)
 
 
-def test_defn_schema_nested_error_has_correct_path():
+def test_schema_nested_error_has_correct_path():
     # given
     schema = {
         "type": "dict",
-        "schema": {"foo": {"type": "dict", "schema": {"bar": {"type": "nothing"},}}},
+        "schema": {"foo": {"type": "dict", "schema": {"bar": {"typeoz": "integer"},}}},
     }
 
     # then
@@ -93,3 +93,11 @@ def test_defn_schema_nested_error_has_correct_path():
         validate_schema(schema)
 
     assert exc.value.path == tuple(["foo", "bar"])
+
+
+def test_smoke_with_custom_leaf_type_doesnt_raise():
+    # given
+    schema = {"type": "foo"}
+
+    # then
+    validate_schema(schema)
