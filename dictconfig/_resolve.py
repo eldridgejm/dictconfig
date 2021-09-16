@@ -157,12 +157,16 @@ class _LeafNode:
         This can be any type.
     type_ : str
         A string describing the expected type of this leaf once resolved.
+    nullable : bool
+        Whether the value can be None or not. If raw is None this is True, it
+        is not parsed (no matter what type_ is). Default: False.
 
     """
 
-    def __init__(self, raw, type_):
+    def __init__(self, raw, type_, nullable=False):
         self.raw = raw
         self.type_ = type_
+        self.nullable = nullable
 
         # The resolved value of the leaf node. There are two special values. If
         # this is _UNDISCOVERED, the resolution process has not yet discovered
@@ -172,9 +176,9 @@ class _LeafNode:
         self._resolved = _UNDISCOVERED
 
     @classmethod
-    def from_raw(cls, raw, leaf_schema):
+    def from_raw(cls, raw, leaf_schema, nullable=False):
         """Create a leaf node from the raw configuration and schema."""
-        return cls(raw, leaf_schema["type"])
+        return cls(raw, leaf_schema["type"], nullable)
 
     @property
     def references(self):
@@ -226,7 +230,10 @@ class _LeafNode:
         for reference_path in self.references:
             s = resolver.interpolate(s, reference_path)
 
-        self._resolved = resolver.parse(s, self.type_)
+        if self.nullable and self.raw is None:
+            self._resolved = None
+        else:
+            self._resolved = resolver.parse(s, self.type_)
         return self._resolved
 
 
@@ -261,6 +268,8 @@ class _DictNode:
             elif child_schema["type"] == "list":
                 children[dct_key] = _ListNode.from_raw(*args)
             else:
+                if 'nullable' in child_schema:
+                    args = args + (child_schema['nullable'],)
                 children[dct_key] = _LeafNode.from_raw(*args)
 
         return cls(children)

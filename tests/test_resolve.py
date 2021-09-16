@@ -48,6 +48,32 @@ def test_with_dicts():
     assert result["quux"]["a"] == "hello"
 
 
+def test_allow_nullable():
+    # given
+    schema = {
+        "type": "dict",
+        "schema": {
+            "foo": {"type": "string", "nullable": True},
+            "bar": {"type": "string"},
+            "quux": {
+                "type": "dict",
+                "schema": {"a": {"type": "string"}, "b": {"type": "string"},},
+            },
+        },
+    }
+
+    dct = {
+        "foo": None,
+        "bar": "${self.quux.b}",
+        "quux": {"a": "${self.foo}", "b": "hi",},
+    }
+
+    # when
+    result = resolve(dct, schema)
+
+    # then
+    assert result["foo"] is None
+
 def test_top_level_list():
     # given
     schema = {"type": "list", "schema": {"type": "string"}}
