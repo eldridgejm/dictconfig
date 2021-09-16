@@ -164,8 +164,12 @@ configuration tree.  The "grammar" of a schema is roughly as follows:
     }
 
     <LEAF_SCHEMA> = {
-        type: ("string" | "integer" | "float" | "boolean" | "datetime" )
+        type: ("string" | "integer" | "float" | "boolean" | "datetime" ),
+        [nullable: (True|False)]
     }
+
+Optionally, a leaf value can be "nullable", meaning that `None` is a valid type. By default,
+the leaf values are not nullable.
 
 This grammar is a subset of that defined by the `Cerberus <https://docs.python-cerberus.org/en/stable/>`_ dict validator.
 Therefore, `dictconfig` schemas can be parsed by Cerberus.
