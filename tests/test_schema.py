@@ -16,15 +16,11 @@ def test_validate_schema_infers_dict_schema_smoke():
 
 def test_validate_schema_with_valuesrules_smoke():
     # given
-    schema = {
-        "type": "dict",
-        "valuesrules": {
-            "type": "integer"
-            }
-        }
+    schema = {"type": "dict", "valuesrules": {"type": "integer"}}
 
     # then (no exceptions raised)
     validate_schema(schema)
+
 
 def test_validate_schema_infers_list_schema_smoke():
     # given

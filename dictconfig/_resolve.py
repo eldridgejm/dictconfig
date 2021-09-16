@@ -256,8 +256,8 @@ class _DictNode:
         children = {}
 
         for dct_key, dct_value in dct.items():
-            if 'valuesrules' in dict_schema:
-                child_schema = dict_schema['valuesrules']
+            if "valuesrules" in dict_schema:
+                child_schema = dict_schema["valuesrules"]
             else:
                 try:
                     child_schema = dict_schema["schema"][dct_key]

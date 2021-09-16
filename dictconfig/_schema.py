@@ -110,7 +110,10 @@ def validate_dict_schema(dict_schema, path=tuple()):
         raise SchemaError('Type must be "dict".', path)
 
     if "schema" not in dict_schema and "valuesrules" not in dict_schema:
-        raise SchemaError('Dict schema must have either a "schema" field or a "valuesrules" field.', path)
+        raise SchemaError(
+            'Dict schema must have either a "schema" field or a "valuesrules" field.',
+            path,
+        )
 
     if "valuesrules" in dict_schema:
         _validate_dict_schema_for_all_keys(dict_schema, path)
@@ -129,9 +132,8 @@ def _validate_dict_schema_by_key(dict_schema, path):
         validate_schema(child_schema, path + tuple([key]))
 
 
-
 def _validate_dict_schema_for_all_keys(dict_schema, path):
-    validate_schema(dict_schema['valuesrules'], path)
+    validate_schema(dict_schema["valuesrules"], path)
 
 
 def validate_list_schema(list_schema, path=tuple()):
