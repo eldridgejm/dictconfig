@@ -180,13 +180,15 @@ class _LeafNode:
     def references(self):
         """Return a list of all of the references in the raw value.
 
+        Surrouding whitespace is ignored. That is, ${ self.y } is the same as ${self.y}.
+
         If the raw value is not a string, there are no references and an empty list is
         returned.
 
         Example
         -------
 
-        >>> leaf = _LeafNode('this is ${self.x} and ${self.y}', 'string')
+        >>> leaf = _LeafNode('this is ${self.x} and ${ self.y }', 'string')
         >>> leaf.references
         ['self.x', 'self.y']
 
@@ -194,7 +196,7 @@ class _LeafNode:
         if not isinstance(self.raw, str):
             return []
 
-        pattern = r"\$\{(.+?)\}"
+        pattern = r"\$\{\s?(.+?)\s?\}"
         return re.findall(pattern, self.raw)
 
     def resolve(self, resolver):
@@ -347,7 +349,7 @@ class _Resolver:
         else:
             substitution = self._retrieve_from_external_variables(exploded_path)
 
-        pattern = r"\$\{" + reference_path + r"\}"
+        pattern = r"\$\{\s?" + reference_path + r"\s?\}"
         return re.sub(pattern, str(substitution), s)
 
     def _retrieve_from_root(self, exploded_path):

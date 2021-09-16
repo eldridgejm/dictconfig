@@ -142,6 +142,24 @@ def test_with_external_external_variables():
     # then
     assert result["bar"] == "testing"
 
+def test_allows_spaces_around_variable_names():
+    # given
+    schema = {
+        "type": "dict",
+        "schema": {"foo": {"type": "string"}, "bar": {"type": "string"},},
+    }
+
+    dct = {
+        "foo": "hello",
+        "bar": "${ vars.foo }",
+    }
+
+    # when
+    result = resolve(dct, schema, external_variables={"vars": {"foo": "testing"}})
+
+    # then
+    assert result["bar"] == "testing"
+
 
 def test_self_reference_raises():
     # given
