@@ -149,8 +149,10 @@ configuration tree.  The "grammar" of a schema is roughly as follows:
 
     <SCHEMA> = (<DICT_SCHEMA> | <LIST_SCHEMA> | <LEAF_SCHEMA>)
 
-    <DICT_SCHEMA> = {
-        type: "dict",
+    <DICT_SCHEMA> = <DICT_SCHEMA_BY_KEY> | <DICT_SCHEMA_FOR_ALL_KEYS>
+
+    <DICT_SCHEMA_BY_KEY> = {
+        "type": "dict",
         schema = {
             key_1: <SCHEMA>,
             [key_2: <SCHEMA>,]
@@ -158,15 +160,20 @@ configuration tree.  The "grammar" of a schema is roughly as follows:
         }
     }
 
+    <DICT_SCHEMA_FOR_ALL_KEYS> = {
+        "type": "dict",
+        "valuesrules" = <SCHEMA>
+    }
+
     <LIST_SCHEMA> = {
-        type: "list",
-        schema: <SCHEMA>
+        "type": "list",
+        "schema": <SCHEMA>
     }
 
     <LEAF_SCHEMA> = {
-        type: ("string" | "integer" | "float" | "boolean" | "datetime" ),
-        [nullable: (True|False)]
+        "type": ("string" | "integer" | "float" | "boolean" | "datetime")
     }
+
 
 Optionally, a leaf value can be "nullable", meaning that `None` is a valid type. By default,
 the leaf values are not nullable.

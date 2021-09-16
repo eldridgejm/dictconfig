@@ -103,6 +103,28 @@ def test_top_level_leaf():
     assert result == 42
 
 
+def test_with_valuesrules():
+    # given
+    schema = {
+            "type": "dict",
+            "valuesrules": {
+                "type": "integer"
+            }
+    }
+
+    data = {
+            'x': '42',
+            'y': '${self.x} + 10'
+    }
+
+    # when
+    result = resolve(data, schema)
+
+    # tehn
+    assert result['x'] == 42
+    assert result['y'] == 52
+
+
 def test_with_list():
     # given
     schema = {

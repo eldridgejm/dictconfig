@@ -9,8 +9,10 @@ The "grammar" of an dictconfig schema is as follows:
 
     <SCHEMA> = (<DICT_SCHEMA> | <LIST_SCHEMA> | <LEAF_SCHEMA>)
 
-    <DICT_SCHEMA> = {
-        type: "dict",
+    <DICT_SCHEMA> = <DICT_SCHEMA_BY_KEY> | <DICT_SCHEMA_FOR_ALL_KEYS>
+
+    <DICT_SCHEMA_BY_KEY> = {
+        "type": "dict",
         schema = {
             key_1: <SCHEMA>,
             [key_2: <SCHEMA>,]
@@ -18,13 +20,18 @@ The "grammar" of an dictconfig schema is as follows:
         }
     }
 
+    <DICT_SCHEMA_FOR_ALL_KEYS> = {
+        "type": "dict",
+        "valuesrules" = <SCHEMA>
+    }
+
     <LIST_SCHEMA> = {
-        type: "list",
-        schema: <SCHEMA>
+        "type": "list",
+        "schema": <SCHEMA>
     }
 
     <LEAF_SCHEMA> = {
-        type: ("string" | "integer" | "float" | "boolean" | "datetime")
+        "type": ("string" | "integer" | "float" | "boolean" | "datetime")
     }
 
 
@@ -102,9 +109,16 @@ def validate_dict_schema(dict_schema, path=tuple()):
     if dict_schema["type"] != "dict":
         raise SchemaError('Type must be "dict".', path)
 
-    if "schema" not in dict_schema:
-        raise SchemaError('Does not have a "schema" field.', path)
+    if "schema" not in dict_schema and "valuesrules" not in dict_schema:
+        raise SchemaError('Dict schema must have either a "schema" field or a "valuesrules" field.', path)
 
+    if "valuesrules" in dict_schema:
+        _validate_dict_schema_for_all_keys(dict_schema, path)
+    else:
+        _validate_dict_schema_by_key(dict_schema, path)
+
+
+def _validate_dict_schema_by_key(dict_schema, path):
     if not isinstance(dict_schema["schema"], dict):
         raise SchemaError('"schema" field must be a dictionary.', path)
 
@@ -113,6 +127,11 @@ def validate_dict_schema(dict_schema, path=tuple()):
             raise SchemaError(f"Key {path}.{key} must be a string.", path)
 
         validate_schema(child_schema, path + tuple([key]))
+
+
+
+def _validate_dict_schema_for_all_keys(dict_schema, path):
+    validate_schema(dict_schema['valuesrules'], path)
 
 
 def validate_list_schema(list_schema, path=tuple()):
