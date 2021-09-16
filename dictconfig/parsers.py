@@ -157,7 +157,7 @@ def smartdate(s):
     except _DateMatchError:
         pass
 
-    raise exceptions.ParseError(f"Cannot parse smartdate {s}.")
+    raise exceptions.ParseError(f"Cannot parse into date: '{s}'.")
 
 
 def smartdatetime(s):
@@ -189,7 +189,7 @@ def smartdatetime(s):
     except _DateMatchError:
         pass
 
-    raise exceptions.ParseError(f"Cannot parse smartdatetime {s}.")
+    raise exceptions.ParseError(f"Cannot parse datetime: '{s}'.")
 
 
 def _parse_timedelta_before_or_after(s):
