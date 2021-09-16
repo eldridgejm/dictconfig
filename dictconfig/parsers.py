@@ -8,6 +8,8 @@ import operator as op
 import datetime as datetimelib
 import re
 
+from . import exceptions
+
 # the AST code in this module is based on:
 # https://stackoverflow.com/questions/2371436/evaluating-a-mathematical-expression-in-a-string
 
