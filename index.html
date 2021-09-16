@@ -199,8 +199,10 @@ lists. Leaf nodes are non-container types, like strings, numbers, etc.</p>
 configuration tree.  The “grammar” of a schema is roughly as follows:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>&lt;SCHEMA&gt; = (&lt;DICT_SCHEMA&gt; | &lt;LIST_SCHEMA&gt; | &lt;LEAF_SCHEMA&gt;)
 
-&lt;DICT_SCHEMA&gt; = {
-    type: &quot;dict&quot;,
+&lt;DICT_SCHEMA&gt; = &lt;DICT_SCHEMA_BY_KEY&gt; | &lt;DICT_SCHEMA_FOR_ALL_KEYS&gt;
+
+&lt;DICT_SCHEMA_BY_KEY&gt; = {
+    &quot;type&quot;: &quot;dict&quot;,
     schema = {
         key_1: &lt;SCHEMA&gt;,
         [key_2: &lt;SCHEMA&gt;,]
@@ -208,14 +210,18 @@ configuration tree.  The “grammar” of a schema is roughly as follows:</p>
     }
 }
 
+&lt;DICT_SCHEMA_FOR_ALL_KEYS&gt; = {
+    &quot;type&quot;: &quot;dict&quot;,
+    &quot;valuesrules&quot; = &lt;SCHEMA&gt;
+}
+
 &lt;LIST_SCHEMA&gt; = {
-    type: &quot;list&quot;,
-    schema: &lt;SCHEMA&gt;
+    &quot;type&quot;: &quot;list&quot;,
+    &quot;schema&quot;: &lt;SCHEMA&gt;
 }
 
 &lt;LEAF_SCHEMA&gt; = {
-    type: (&quot;string&quot; | &quot;integer&quot; | &quot;float&quot; | &quot;boolean&quot; | &quot;datetime&quot; ),
-    [nullable: (True|False)]
+    &quot;type&quot;: (&quot;string&quot; | &quot;integer&quot; | &quot;float&quot; | &quot;boolean&quot; | &quot;datetime&quot;)
 }
 </pre></div>
 </div>
