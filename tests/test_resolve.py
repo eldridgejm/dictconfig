@@ -74,6 +74,7 @@ def test_allow_nullable():
     # then
     assert result["foo"] is None
 
+
 def test_top_level_list():
     # given
     schema = {"type": "list", "schema": {"type": "string"}}
@@ -167,6 +168,7 @@ def test_with_external_external_variables():
 
     # then
     assert result["bar"] == "testing"
+
 
 def test_allows_spaces_around_variable_names():
     # given

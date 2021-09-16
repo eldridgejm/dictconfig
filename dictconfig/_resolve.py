@@ -268,8 +268,8 @@ class _DictNode:
             elif child_schema["type"] == "list":
                 children[dct_key] = _ListNode.from_raw(*args)
             else:
-                if 'nullable' in child_schema:
-                    args = args + (child_schema['nullable'],)
+                if "nullable" in child_schema:
+                    args = args + (child_schema["nullable"],)
                 children[dct_key] = _LeafNode.from_raw(*args)
 
         return cls(children)

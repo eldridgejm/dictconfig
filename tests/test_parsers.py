@@ -48,6 +48,12 @@ def test_smartdate_from_explicit_datetime():
     assert parsers.smartdate("2021-10-05 23:59:10") == datetime.date(2021, 10, 5)
 
 
+def test_smartdate_from_datetime_object():
+    assert parsers.smartdate(datetime.datetime(2021, 10, 10, 1, 1, 1)) == datetime.date(
+        2021, 10, 10
+    )
+
+
 def test_smartdate_delta_days_before():
     assert parsers.smartdate("3 days before 2021-10-05") == datetime.date(2021, 10, 2)
 
@@ -98,6 +104,18 @@ def test_smartdatetime_from_explicit_datetime():
     assert parsers.smartdatetime("2021-10-05 23:59:10") == datetime.datetime(
         2021, 10, 5, 23, 59, 10
     )
+
+
+def test_smartdatetime_from_date_object():
+    assert parsers.smartdatetime(datetime.date(2021, 10, 10)) == datetime.datetime(
+        2021, 10, 10, 0, 0, 0
+    )
+
+
+def test_smartdatetime_from_datetime_object():
+    assert parsers.smartdatetime(
+        datetime.datetime(2021, 10, 10, 1, 1, 1)
+    ) == datetime.datetime(2021, 10, 10, 1, 1, 1)
 
 
 def test_smartdatetime_delta_days_before():

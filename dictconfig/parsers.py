@@ -135,11 +135,11 @@ def smartdate(s):
     datetime.date(2021, 9, 13)
 
     """
-    if isinstance(s, datetimelib.date):
-        return s
-
     if isinstance(s, datetimelib.datetime):
         return s.date()
+
+    if isinstance(s, datetimelib.date):
+        return s
 
     try:
         return datetimelib.datetime.fromisoformat(s).date()
@@ -167,11 +167,11 @@ def smartdatetime(s):
     are permitted. For instance: :code:`3 days after 2021-10-05 23:59:00`.
 
     """
-    if isinstance(s, datetimelib.date):
-        return datetimelib.datetime(s)
-
     if isinstance(s, datetimelib.datetime):
         return s
+
+    if isinstance(s, datetimelib.date):
+        return datetimelib.datetime(s.year, s.month, s.day, 0, 0, 0)
 
     try:
         return datetimelib.datetime.fromisoformat(s)
