@@ -153,8 +153,12 @@ def _build_configuration_tree_node(raw_cfg, schema, path=tuple()):
         The configuration tree.
 
     """
-    if raw_cfg is None and schema["nullable"]:
-        return _LeafNode.from_raw(None, {"type": "any"}, path)
+    if raw_cfg is None:
+        if 'nullable' in schema and schema["nullable"]:
+            return _LeafNode.from_raw(None, {"type": "any"}, path)
+        else:
+            dotted = '.'.join(path)
+            raise exceptions.ResolutionError(f'{dotted} is unexpectedly null.') 
 
     # construct the configuration tree
     # the configuration tree is a nested container whose terminal leaf values
