@@ -11,141 +11,40 @@ from pytest import raises
 # 5. is nullible enforced?
 # 6. is parsing done as expected?
 
-# defaults
-# ========
+# dictionaries
+# ============
 
-def test_fills_in_defaults_for_missing
-
-
-def test_with_dicts():
+def test_raises_if_required_keys_are_missing():
     # given
     schema = {
         "type": "dict",
-        "schema": {
-            "foo": {"type": "string"},
-            "bar": {"type": "string"},
-            "quux": {
-                "type": "dict",
-                "schema": {"a": {"type": "string"}, "b": {"type": "string"},},
-            },
+        "required_keys": {
+            "foo": {"value_schema": {"type": "any"}},
+            "bar": {"value_schema": {"type": "any"}},
         },
     }
 
-    dct = {
-        "foo": "hello",
-        "bar": "${self.quux.b}",
-        "quux": {"a": "${self.foo}", "b": "hi",},
-    }
+    dct = {"foo": 42}
 
     # when
-    result = resolve(dct, schema)
-
-    # then
-    assert result["bar"] == "hi"
-    assert result["quux"]["a"] == "hello"
+    with raises(exceptions.MissingKeyError):
+        resolve(dct, schema)
 
 
-def test_allow_nullable():
+def test_raises_if_extra_keys_without_extra_keys_schema():
     # given
-    schema = {
-        "type": "dict",
-        "schema": {
-            "foo": {"type": "string", "nullable": True},
-            "bar": {"type": "string"},
-            "quux": {
-                "type": "dict",
-                "schema": {"a": {"type": "string"}, "b": {"type": "string"},},
-            },
-        },
-    }
+    schema = {"type": "dict", "required_keys": {}}
 
-    dct = {
-        "foo": None,
-        "bar": "${self.quux.b}",
-        "quux": {"a": "${self.foo}", "b": "hi",},
-    }
+    dct = {"foo": 42}
 
     # when
-    result = resolve(dct, schema)
-
-    # then
-    assert result["foo"] is None
+    with raises(exceptions.ExtraKeyError):
+        resolve(dct, schema)
 
 
-def test_top_level_list():
+def test_allows_extra_keys_with_extra_keys_schema():
     # given
-    schema = {"type": "list", "schema": {"type": "string"}}
-
-    data = ["foo", "bar", "baz"]
-
-    # when
-    result = resolve(data, schema)
-
-    # then
-    assert result[0] == "foo"
-    assert result[1] == "bar"
-    assert result[2] == "baz"
-
-
-def test_top_level_leaf():
-    # given
-    schema = {"type": "integer"}
-
-    data = "42"
-
-    # when
-    result = resolve(data, schema)
-
-    # then
-    assert result == 42
-
-
-def test_with_valuesrules():
-    # given
-    schema = {"type": "dict", "valuesrules": {"type": "integer"}}
-
-    data = {"x": "42", "y": "${self.x} + 10"}
-
-    # when
-    result = resolve(data, schema)
-
-    # tehn
-    assert result["x"] == 42
-    assert result["y"] == 52
-
-
-def test_with_list():
-    # given
-    schema = {
-        "type": "dict",
-        "schema": {
-            "foo": {"type": "string"},
-            "bar": {"type": "string"},
-            "baz": {"type": "list", "schema": {"type": "string"}},
-        },
-    }
-
-    dct = {
-        "foo": "hello",
-        "bar": "${self.baz.2}",
-        "baz": ["${self.foo}", "${self.bar}", "something",],
-    }
-
-    # when
-    result = resolve(dct, schema)
-
-    # then
-    assert result["bar"] == "something"
-
-
-def test_providing_no_schema_preserves_leaf_node_type():
-    # that is, does not cast internal nodes to strings
-
-    # given
-    schema = {
-        "type": "dict",
-        "schema": {},
-    }
+    schema = {"type": "dict", "extra_keys_schema": {"type": "any"}}
 
     dct = {"foo": 42}
 
@@ -156,99 +55,196 @@ def test_providing_no_schema_preserves_leaf_node_type():
     assert result["foo"] == 42
 
 
-def test_providing_no_schema_preserves_internal_node_type():
-    # that is, does not cast internal nodes to strings
-
+def test_fills_in_missing_value_with_default_if_provided():
     # given
     schema = {
         "type": "dict",
-        "schema": {"foo": {"type": "string"},},
+        "optional_keys": {"foo": {"default": 42, "value_schema": {"type": "integer"}}},
     }
 
-    dct = {
-        "foo": "hello",
-        "bar": [1, 2, 3],
-    }
+    dct = {}
 
     # when
     result = resolve(dct, schema)
 
     # then
-    assert result["bar"] == [1, 2, 3]
+    assert result["foo"] == 42
 
 
-def test_with_multiple_redirections():
+def test_allows_missing_keys_if_required_is_false():
     # given
     schema = {
         "type": "dict",
-        "schema": {
-            "foo": {"type": "string"},
-            "bar": {"type": "string"},
-            "baz": {"type": "list", "schema": {"type": "string"}},
+        "optional_keys": {
+            "foo": {"value_schema": {"type": "integer"}},
+            "bar": {"value_schema": {"type": "integer"},},
+        },
+    }
+
+    dct = {"bar": 42}
+
+    # when
+    result = resolve(dct, schema)
+
+    # then
+    assert result["bar"] == 42
+    assert "foo" not in result
+
+
+# non-dictionary roots
+# ====================
+
+
+def test_lists_are_permitted_as_root_node():
+    # given
+    schema = {"type": "list", "element_schema": {"type": "integer"}}
+
+    lst = [1, 2, 3]
+
+    # when
+    result = resolve(lst, schema)
+
+    # then
+    assert result == [1, 2, 3]
+
+
+def test_leafs_are_permitted_as_root_node():
+    # given
+    schema = {
+        "type": "integer",
+    }
+
+    x = 42
+
+    # when
+    result = resolve(x, schema)
+
+    # then
+    assert result == 42
+
+
+# intepolation
+# ============
+
+
+def test_interpolation_of_other_dictionary_entries_same_level():
+    # given
+    schema = {
+        "type": "dict",
+        "required_keys": {
+            "foo": {"value_schema": {"type": "string"}},
+            "bar": {"value_schema": {"type": "string"}},
+        },
+    }
+
+    dct = {"foo": "this", "bar": "testing ${self.foo}"}
+
+    # when
+    result = resolve(dct, schema)
+
+    # then
+    assert result["bar"] == "testing this"
+
+
+def test_interpolation_of_other_dictionary_entries_different_level():
+    # given
+    schema = {
+        "type": "dict",
+        "required_keys": {
+            "foo": {"value_schema": {"type": "string"}},
+            "bar": {
+                "value_schema": {
+                    "type": "dict",
+                    "required_keys": {"baz": {"value_schema": {"type": "string"}}},
+                }
+            },
+        },
+    }
+
+    dct = {"foo": "testing ${self.bar.baz}", "bar": {"baz": "this"}}
+
+    # when
+    result = resolve(dct, schema)
+
+    # then
+    assert result["foo"] == "testing this"
+
+
+def test_interpolation_can_reference_list_elements():
+    # given
+    schema = {
+        "type": "dict",
+        "required_keys": {
+            "foo": {"value_schema": {"type": "string"}},
+            "bar": {
+                "value_schema": {"type": "list", "element_schema": {"type": "string"}},
+            },
+        },
+    }
+
+    dct = {"foo": "testing ${self.bar.1}", "bar": ["this", "that", "the other"]}
+
+    # when
+    result = resolve(dct, schema)
+
+    # then
+    assert result["foo"] == "testing that"
+
+
+def test_interpolation_can_use_external_variables():
+    # given
+    schema = {
+        "type": "dict",
+        "required_keys": {"foo": {"value_schema": {"type": "string"}},},
+    }
+
+    dct = {"foo": "testing ${a.b.c}"}
+    external_variables = {"a": {"b": {"c": "this"}}}
+
+    # when
+    result = resolve(dct, schema, external_variables)
+
+    # then
+    assert result["foo"] == "testing this"
+
+
+def test_chain_of_multiple_interpolations():
+    # given
+    schema = {
+        "type": "dict",
+        "required_keys": {
+            "foo": {"value_schema": {"type": "string"}},
+            "bar": {"value_schema": {"type": "string"}},
+            "baz": {"value_schema": {"type": "string"}},
         },
     }
 
     dct = {
-        "foo": "hello",
-        "bar": "${self.foo}",
-        "baz": ["${self.bar}", "${self.baz.0}", "${self.baz.1}",],
+            "foo": "this",
+            "bar": "testing ${self.foo}",
+            "baz": "now ${self.bar}",
     }
 
     # when
     result = resolve(dct, schema)
 
     # then
-    assert result["baz"][2] == "hello"
+    assert result["foo"] == "this"
+    assert result["bar"] == "testing this"
+    assert result["baz"] == "now testing this"
 
 
-def test_with_external_external_variables():
+def test_raises_if_self_reference_detected():
     # given
     schema = {
         "type": "dict",
-        "schema": {"foo": {"type": "string"}, "bar": {"type": "string"},},
+        "required_keys": {
+            "foo": {"value_schema": {"type": "string"}},
+        },
     }
 
     dct = {
-        "foo": "hello",
-        "bar": "${vars.foo}",
-    }
-
-    # when
-    result = resolve(dct, schema, external_variables={"vars": {"foo": "testing"}})
-
-    # then
-    assert result["bar"] == "testing"
-
-
-def test_allows_spaces_around_variable_names():
-    # given
-    schema = {
-        "type": "dict",
-        "schema": {"foo": {"type": "string"}, "bar": {"type": "string"},},
-    }
-
-    dct = {
-        "foo": "hello",
-        "bar": "${ vars.foo }",
-    }
-
-    # when
-    result = resolve(dct, schema, external_variables={"vars": {"foo": "testing"}})
-
-    # then
-    assert result["bar"] == "testing"
-
-
-def test_self_reference_raises():
-    # given
-    schema = {
-        "type": "dict",
-        "schema": {"foo": {"type": "string"}, "bar": {"type": "string"},},
-    }
-
-    dct = {
-        "foo": "hello",
-        "bar": "${self.bar}",
+            "foo": "${self.foo}",
     }
 
     # when
@@ -256,249 +252,230 @@ def test_self_reference_raises():
         resolve(dct, schema)
 
 
-def test_circular_reference_raises():
+def test_raises_if_cyclical_reference_detected():
     # given
     schema = {
         "type": "dict",
-        "schema": {"foo": {"type": "string"}, "bar": {"type": "string"},},
+        "required_keys": {
+            "foo": {"value_schema": {"type": "string"}},
+            "bar": {"value_schema": {"type": "string"}},
+            "baz": {"value_schema": {"type": "string"}},
+        },
     }
 
     dct = {
-        "foo": "${self.bar}",
-        "bar": "${self.foo}",
+            "foo": "${self.baz}",
+            "bar": "${self.foo}",
+            "baz": "${self.bar}",
     }
 
     # when
     with raises(exceptions.ResolutionError):
         resolve(dct, schema)
-
-
-def test_undefined_placeholder_raises():
-    # given
-    schema = {
-        "type": "dict",
-        "schema": {"foo": {"type": "string"}, "bar": {"type": "string"},},
-    }
-
-    dct = {
-        "foo": "${self.bar}",
-        "bar": "${self.baz}",
-    }
-
-    # when
-    with raises(exceptions.ResolutionError):
-        resolve(dct, schema)
-
-
-def test_undefined_external_variable_raises():
-    # given
-    schema = {
-        "type": "dict",
-        "schema": {"foo": {"type": "string"}, "bar": {"type": "string"},},
-    }
-
-    dct = {
-        "foo": "${bar}",
-        "bar": "${baz}",
-    }
-
-    # when
-    with raises(exceptions.ResolutionError):
-        resolve(dct, schema)
-
 
 # parsing
-# -------
+# =======
 
-
-def test_parse_integer_arithmetic():
+def test_leafs_are_parsed_into_expected_types():
     # given
     schema = {
         "type": "dict",
-        "schema": {
-            "x": {"type": "integer"},
-            "y": {"type": "integer"},
-            "z": {"type": "integer"},
-        },
+        "required_keys": {
+            "foo": {"value_schema": {"type": "integer"}}
+        }
     }
 
-    dct = {"x": 10, "y": 20, "z": "${self.x} + ${self.y}"}
+    dct = {
+            "foo": '42'
+    }
 
     # when
     result = resolve(dct, schema)
 
     # then
-    assert result == {"x": 10, "y": 20, "z": 30}
+    assert result['foo'] == 42
 
 
-def test_parse_boolean_logic():
+def test_parsing_occurs_after_interpolation():
     # given
     schema = {
         "type": "dict",
-        "schema": {
-            "x": {"type": "boolean"},
-            "y": {"type": "boolean"},
-            "z": {"type": "boolean"},
-        },
+        "required_keys": {
+            "foo": {"value_schema": {"type": "integer"}},
+            "bar": {"value_schema": {"type": "integer"}}
+        }
     }
 
-    dct = {"x": True, "y": False, "z": "(${self.x} or ${self.y}) and not ${self.x}"}
+    dct = {
+            "foo": '42',
+            "bar": '${self.foo}'
+    }
 
     # when
     result = resolve(dct, schema)
 
     # then
-    assert result == {"x": True, "y": False, "z": False}
+    assert result['foo'] == 42
+    assert result['bar'] == 42
 
 
-def test_parse_dates():
-    # given
-    schema = {"type": "dict", "schema": {"x": {"type": "date"}, "y": {"type": "date"},}}
-
-    dct = {"x": "2021-01-01", "y": "7 days after ${self.x}"}
-
-    overrides = {"date": parsers.smartdate}
-
-    # when
-    result = resolve(dct, schema, override_parsers=overrides)
-
-    # then
-    assert result["y"] == datetime.date(2021, 1, 8)
-
-
-def test_parse_dates_and_integers():
+def test_parsing_of_extra_dictionary_keys():
     # given
     schema = {
         "type": "dict",
-        "schema": {
-            "x": {"type": "date"},
-            "parts": {
-                "type": "dict",
-                "schema": {"a": {"type": "integer"}, "b": {"type": "integer"},},
-            },
-            "y": {"type": "integer"},
-            "z": {"type": "date"},
-        },
+        "extra_keys_schema": {"type": "integer"}
     }
 
     dct = {
-        "x": "2021-01-01",
-        "parts": {"a": 1, "b": 6,},
-        "y": "${self.parts.a} + ${self.parts.b}",
-        "z": "${self.y} days after ${self.x}",
+            "foo": '42',
+            "bar": '10'
     }
-
-    overrides = {"date": parsers.smartdate}
 
     # when
-    result = resolve(dct, schema, override_parsers=overrides)
-
-    # then
-    assert result["z"] == datetime.date(2021, 1, 8)
-
-
-def test_with_multiple_dates():
-    # given
-    schema = {
-        "type": "dict",
-        "schema": {
-            "x": {"type": "date"},
-            "y": {"type": "datetime"},
-            "z": {"type": "date"},
-        },
-    }
-
-    dct = {
-        "x": "2021-01-01",
-        "y": "7 days after ${self.z} 23:59:00",
-        "z": "3 days after ${self.x}",
-    }
-
-    overrides = {"date": parsers.smartdate, "datetime": parsers.smartdatetime}
-
-    # when
-    result = resolve(dct, schema, override_parsers=overrides)
-
-    # then
-    assert result["y"] == datetime.datetime(2021, 1, 11, 23, 59)
-
-
-def test_custom_leaf_type_uses_correct_parser():
-    # given
-    schema = {
-        "type": "dict",
-        "schema": {"x": {"type": "string"}, "y": {"type": "foo"},},
-    }
-
-    dct = {
-        "x": "2021-01-01",
-        "y": "7 days after 23:59:00",
-    }
-
-    overrides = {"foo": lambda _: "hello"}
-
-    # when
-    result = resolve(dct, schema, override_parsers=overrides)
-
-    # then
-    assert result["y"] == "hello"
-
-
-def test_custom_leaf_type_raises_if_no_parser_provided():
-    # given
-    schema = {
-        "type": "dict",
-        "schema": {"x": {"type": "string"}, "y": {"type": "foo"},},
-    }
-
-    dct = {
-        "x": "2021-01-01",
-        "y": "7 days after 23:59:00",
-    }
-
-    overrides = {"notfoo": (lambda _: "okidoke")}
-
-    # when
-    with raises(exceptions.ResolutionError):
-        result = resolve(dct, schema, override_parsers=overrides)
-
-
-def test_reference_of_a_part_of_config_without_a_schema():
-    # given
-    schema = {"type": "dict", "schema": {}}
-    dct = {"x": {"foo": "this"}, "y": "testing ${self.x.foo}"}
-
-    # when
-    resolved = resolve(dct, schema)
-
-    # then
-    assert resolved['y'] == 'testing this'
-
-
-def test_top_level_any():
-    # given
-    schema = {"type": "any"}
-    dct = {"x": {"foo": "this"}, "y": "testing ${self.x.foo}"}
-
-    # when
-    resolved = resolve(dct, schema)
-
-    # then
-    assert resolved['y'] == 'testing this'
-    assert resolved['x']['foo'] == 'this'
-
-def test_if_path_not_in_schema_type_inferred_to_be_string():
-    schema = {
-        "type": "dict",
-        "schema": {"foo": {"type": "string"}, "bar": {"type": "string"},},
-    }
-
-    dct = {"foo": "hi", "bar": "this is ${self.foo}", "baz": "testing"}
-
     result = resolve(dct, schema)
 
     # then
-    assert result["bar"] == "this is hi"
-    assert result["baz"] == "testing"
+    assert result['foo'] == 42
+    assert result['bar'] == 10
 
 
+def test_parsing_of_list_elements():
+    # given
+    schema = {
+        "type": "list",
+        "element_schema": {"type": "integer"}
+    }
+
+    dct = ['10', '25']
+
+    # when
+    result = resolve(dct, schema)
+
+    # then
+    assert result == [10, 25]
+
+
+
+
+
+# "any" type
+# ==========
+
+
+def test_all_types_preserved_when_any_is_used():
+    # given
+    schema = {
+        "type": "any",
+    }
+
+    dct = {
+            'foo': 'testing',
+            'bar': {'x': 1, 'y': 2},
+            'baz': [1, 2, 3]
+    }
+
+    # when
+    result = resolve(dct, schema)
+
+    # then
+    assert result == dct
+
+
+def test_interpolation_occurs_when_any_is_used():
+    # given
+    schema = {
+        "type": "any",
+    }
+
+    dct = {
+            'foo': 'testing',
+            'bar': '${self.foo} this'
+    }
+
+    # when
+    result = resolve(dct, schema)
+
+    # then
+    assert result['bar'] == 'testing this'
+
+
+
+
+
+# nullable
+# ========
+
+def test_dictionary_can_be_nullable():
+    # given
+    schema = {
+        "type": "dict",
+        "required_keys": {
+            "foo": {
+                "value_schema": {
+                    "type": "dict",
+                    "nullable": True
+                }
+            }
+        }
+    }
+
+    dct = {
+        "foo": None
+    }
+
+    # when
+    result = resolve(dct, schema)
+
+    # then
+    assert result['foo'] is None
+
+
+def test_list_can_be_nullable():
+    # given
+    schema = {
+        "type": "dict",
+        "required_keys": {
+            "foo": {
+                "value_schema": {
+                    "type": "list",
+                    "element_schema": {"type": "any"},
+                    "nullable": True
+                }
+            }
+        }
+    }
+
+    dct = {
+        "foo": None
+    }
+
+    # when
+    result = resolve(dct, schema)
+
+    # then
+    assert result['foo'] is None
+
+
+def test_leaf_can_be_nullable():
+    # given
+    schema = {
+        "type": "dict",
+        "required_keys": {
+            "foo": {
+                "value_schema": {
+                    "type": "integer",
+                    "nullable": True
+                }
+            }
+        }
+    }
+
+    dct = {
+        "foo": None
+    }
+
+    # when
+    result = resolve(dct, schema)
+
+    # then
+    assert result['foo'] is None

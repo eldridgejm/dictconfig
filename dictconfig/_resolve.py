@@ -39,7 +39,23 @@ DEFAULT_PARSERS = {
 }
 
 
-def resolve(raw_cfg, schema, external_variables=None, override_parsers=None):
+def validate_schema(schema):
+    """Validate a schema.
+
+    Raises
+    ------
+    SchemaError
+        If the schema is not valid.
+
+    """
+    try:
+        _validate_schema(schema)
+    except exceptions.ResolutionError as exc:
+        raise exceptions.SchemaError(exc, ())
+
+
+def resolve(raw_cfg, schema, external_variables=None, override_parsers=None,
+        schema_validator=validate_schema):
     """Resolve a raw configuration by interpolating and parsing its entries.
 
     The raw configuration can be a dictionary, list, or a non-container type;
@@ -63,13 +79,22 @@ def resolve(raw_cfg, schema, external_variables=None, override_parsers=None):
         should take the raw value (after interpolation) and convert it to the specified
         type. If this is not provided, the default parsers are used.
 
+    Raises
+    ------
+    SchemaError
+        If the schema is not valid.
+
     """
     if external_variables is None:
         external_variables = {}
-    elif "self" in external_variables:
+
+    if "self" in external_variables:
         raise ValueError(
             'external_variables cannot contain a "self" key; it is reserved.'
         )
+
+    if schema_validator is not None:
+        schema_validator(schema)
 
     parsers = _update_parsers(override_parsers)
     root = _build_configuration_tree_node(raw_cfg, schema)
@@ -123,22 +148,22 @@ def _build_configuration_tree_node(raw_cfg, schema):
         The configuration tree.
 
     """
+    if raw_cfg is None and schema['nullable']:
+        return _LeafNode.from_raw(None, {'type': 'any'})
+
     # construct the configuration tree
     # the configuration tree is a nested container whose terminal leaf values
     # are _LeafNodes. "Internal" nodes are dictionaries or lists.
     if isinstance(raw_cfg, dict):
         if schema['type'] == 'any':
-            schema = {'type': 'dict', 'valuesrules': {'type': 'any'}}
-
+            schema = {'type': 'dict', 'extra_keys_schema': {'type': 'any'}}
         return _DictNode.from_raw(raw_cfg, schema)
     elif isinstance(raw_cfg, list):
         if schema['type'] == 'any':
-            schema = {'type': 'list', 'schema': {'type': 'any'}}
-
+            schema = {'type': 'list', 'element_schema': {'type': 'any'}}
         return _ListNode.from_raw(raw_cfg, schema)
     else:
-        nullable = False if "nullable" not in schema else schema['nullable']
-        return _LeafNode.from_raw(raw_cfg, schema, nullable)
+        return _LeafNode.from_raw(raw_cfg, schema)
 
 
 # denotes that a node is currently being resolved
@@ -166,16 +191,9 @@ class _DictNode:
         """Construct a _DictNode from a raw configuration dictionary and its schema."""
         children = {}
 
-        for dct_key, dct_value in dct.items():
-            if "valuesrules" in dict_schema:
-                child_schema = dict_schema["valuesrules"]
-            else:
-                try:
-                    child_schema = dict_schema["schema"][dct_key]
-                except KeyError:
-                    child_schema = {"type": "any"}
-
-            children[dct_key] = _build_configuration_tree_node(dct_value, child_schema)
+        _handle_required_keys(children, dct, dict_schema)
+        _handle_optional_keys(children, dct, dict_schema)
+        _handle_extra_keys(children, dct, dict_schema)
 
         return cls(children)
 
@@ -185,6 +203,50 @@ class _DictNode:
     def resolve(self, resolver):
         """Recursively resolve the _DictNode into a dictionary."""
         return {key: child.resolve(resolver) for key, child in self.children.items()}
+
+
+def _handle_required_keys(children, dct, dict_schema):
+    required_keys = dict_schema.get("required_keys", {})
+
+    for key, key_spec in required_keys.items():
+        if key not in dct:
+            raise exceptions.MissingKeyError(f"Missing required key: {key}.")
+
+        children[key] = _build_configuration_tree_node(
+            dct[key], key_spec["value_schema"]
+        )
+
+
+def _handle_optional_keys(children, dct, dict_schema):
+    optional_keys = dict_schema.get("optional_keys", {})
+
+    for key, key_spec in optional_keys.items():
+        if key in dct:
+            # key is not missing
+            value = dct[key]
+        elif "default" in key_spec:
+            # key is missing and default was provided
+            value = key_spec["default"]
+        else:
+            # key is missing and no default was provided
+            continue
+
+        children[key] = _build_configuration_tree_node(value, key_spec["value_schema"])
+
+
+def _handle_extra_keys(children, dct, dict_schema):
+    required_keys = dict_schema.get("required_keys", {})
+    optional_keys = dict_schema.get("optional_keys", {})
+    expected_keys = set(required_keys) | set(optional_keys)
+    extra_keys = dct.keys() - expected_keys
+
+    if extra_keys and "extra_keys_schema" not in dict_schema:
+        raise exceptions.ExtraKeyError(f"Unexpected extra keys: {extra_keys}")
+
+    for key in extra_keys:
+        children[key] = _build_configuration_tree_node(
+            dct[key], dict_schema["extra_keys_schema"]
+        )
 
 
 class _ListNode:
@@ -203,7 +265,7 @@ class _ListNode:
     @classmethod
     def from_raw(cls, lst, list_schema):
         """Make an internal list node from a raw list and recurse on the children."""
-        child_schema = list_schema["schema"]
+        child_schema = list_schema["element_schema"]
 
         children = []
         for lst_value in lst:
@@ -309,6 +371,7 @@ class _LeafNode:
             self._resolved = resolver.parse(s, self.type_)
         return self._resolved
 
+
 # resolver
 # --------
 # A resolver is responsible for managing the resolution context. When a leaf node is
@@ -402,3 +465,152 @@ def _get_path(dct, exploded_path):
     if len(exploded_path) == 1:
         return dct[exploded_path[0]]
     return _get_path(dct[exploded_path[0]], exploded_path[1:])
+
+
+# validation
+# ----------
+
+def _validate_schema(schema):
+
+    _validate_general_schema(schema)
+
+    if schema['type'] == 'dict':
+        _validate_dict_schema(schema)
+    elif schema['type'] == 'list':
+        _validate_list_schema(schema)
+    elif schema['type'] == 'any':
+        _validate_any_schema(schema)
+
+
+def _try_to_resolve_without_validating(schema, schema_schema):
+    def nop(s): return
+    return resolve(schema, schema_schema, schema_validator=nop)
+
+
+def _validate_general_schema(schema):
+    schema_schema = {
+        "type": "dict",
+
+        "required_keys": {
+            "type": {"value_schema": {"type": "string"}}
+        },
+
+        "optional_keys": {
+            "nullable": {
+                "value_schema": {"type": "boolean"},
+            }
+        },
+
+        "extra_keys_schema": {"type": "any"}
+    }
+
+    _try_to_resolve_without_validating(schema, schema_schema)
+
+
+def _validate_dict_schema(dict_schema):
+    dict_schema_schema = {
+        "type": "dict",
+
+        "required_keys": {
+            "type": {"value_schema": {"type": "string"}}
+        },
+
+        "optional_keys": {
+            "required_keys": {
+                "value_schema": {"type": "any"}
+            },
+
+            "optional_keys": {
+                "value_schema": {"type": "any"}
+            },
+
+            "extra_keys_schema": {
+                "value_schema": {"type": "any"}
+            },
+
+            "nullable": {
+                "value_schema": {"type": "boolean"},
+            }
+
+        }
+    }
+
+    _try_to_resolve_without_validating(dict_schema, dict_schema_schema)
+
+    required_keys = dict_schema.get('required_keys', {})
+    optional_keys = dict_schema.get('optional_keys', {})
+
+    for key_spec in required_keys.values():
+        _validate_required_key_spec(key_spec)
+
+    for key_spec in optional_keys.values():
+        _validate_optional_key_spec(key_spec)
+
+    if "extra_keys_schema" in dict_schema:
+        _validate_schema(dict_schema['extra_keys_schema'])
+
+
+def _validate_required_key_spec(key_spec):
+    key_spec_schema = {
+        "type": "dict",
+        "required_keys": {
+            "value_schema": {
+                "value_schema": {"type": "any"}
+            }
+        }
+    }
+
+    _try_to_resolve_without_validating(key_spec, key_spec_schema)
+    _validate_schema(key_spec['value_schema'])
+
+
+def _validate_optional_key_spec(key_spec):
+    key_spec_schema = {
+        "type": "dict",
+        "required_keys": {
+            "value_schema": {
+                "value_schema": {"type": "any"}
+            }
+        },
+        "optional_keys": {
+            "default": {"value_schema": {"type": "any"}}
+        }
+    }
+
+    _try_to_resolve_without_validating(key_spec, key_spec_schema)
+    _validate_schema(key_spec['value_schema'])
+
+
+def _validate_list_schema(list_schema):
+    list_schema_schema = {
+        "type": "dict",
+        "required_keys": {
+            "type": {
+                "value_schema": {"type": "string"}
+            },
+            "element_schema": {
+                "value_schema": {"type": "any"}
+            }
+        },
+        "optional_keys": {
+            "nullable": {
+                "value_schema": {"type": "boolean"},
+            }
+        }
+    }
+
+    _try_to_resolve_without_validating(list_schema, list_schema_schema)
+    _validate_schema(list_schema['element_schema'])
+
+
+def _validate_any_schema(any_schema):
+    any_schema_schema = {
+        'type': 'dict',
+        'required_keys': {"type": {"value_schema": {"type": "string"}}},
+        'optional_keys': {
+            "nullable": {"value_schema": {"type": "boolean"},
+                }
+        }
+    }
+
+    _try_to_resolve_without_validating(any_schema, any_schema_schema)

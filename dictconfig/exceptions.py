@@ -16,5 +16,13 @@ class ResolutionError(Error):
     """An error while resolving an dictconfig."""
 
 
+class MissingKeyError(ResolutionError):
+    """A required key is missing."""
+
+
+class ExtraKeyError(ResolutionError):
+    """An unexpected extra key has been provided."""
+
+
 class ParseError(ResolutionError):
     """Could not parse the configuration value."""
