@@ -14,6 +14,7 @@ from pytest import raises
 # dictionaries
 # ============
 
+
 def test_raises_if_required_keys_are_missing():
     # given
     schema = {
@@ -220,9 +221,9 @@ def test_chain_of_multiple_interpolations():
     }
 
     dct = {
-            "foo": "this",
-            "bar": "testing ${self.foo}",
-            "baz": "now ${self.bar}",
+        "foo": "this",
+        "bar": "testing ${self.foo}",
+        "baz": "now ${self.bar}",
     }
 
     # when
@@ -238,13 +239,11 @@ def test_raises_if_self_reference_detected():
     # given
     schema = {
         "type": "dict",
-        "required_keys": {
-            "foo": {"value_schema": {"type": "string"}},
-        },
+        "required_keys": {"foo": {"value_schema": {"type": "string"}},},
     }
 
     dct = {
-            "foo": "${self.foo}",
+        "foo": "${self.foo}",
     }
 
     # when
@@ -264,36 +263,34 @@ def test_raises_if_cyclical_reference_detected():
     }
 
     dct = {
-            "foo": "${self.baz}",
-            "bar": "${self.foo}",
-            "baz": "${self.bar}",
+        "foo": "${self.baz}",
+        "bar": "${self.foo}",
+        "baz": "${self.bar}",
     }
 
     # when
     with raises(exceptions.ResolutionError):
         resolve(dct, schema)
 
+
 # parsing
 # =======
+
 
 def test_leafs_are_parsed_into_expected_types():
     # given
     schema = {
         "type": "dict",
-        "required_keys": {
-            "foo": {"value_schema": {"type": "integer"}}
-        }
+        "required_keys": {"foo": {"value_schema": {"type": "integer"}}},
     }
 
-    dct = {
-            "foo": '42'
-    }
+    dct = {"foo": "42"}
 
     # when
     result = resolve(dct, schema)
 
     # then
-    assert result['foo'] == 42
+    assert result["foo"] == 42
 
 
 def test_parsing_occurs_after_interpolation():
@@ -302,60 +299,45 @@ def test_parsing_occurs_after_interpolation():
         "type": "dict",
         "required_keys": {
             "foo": {"value_schema": {"type": "integer"}},
-            "bar": {"value_schema": {"type": "integer"}}
-        }
+            "bar": {"value_schema": {"type": "integer"}},
+        },
     }
 
-    dct = {
-            "foo": '42',
-            "bar": '${self.foo}'
-    }
+    dct = {"foo": "42", "bar": "${self.foo}"}
 
     # when
     result = resolve(dct, schema)
 
     # then
-    assert result['foo'] == 42
-    assert result['bar'] == 42
+    assert result["foo"] == 42
+    assert result["bar"] == 42
 
 
 def test_parsing_of_extra_dictionary_keys():
     # given
-    schema = {
-        "type": "dict",
-        "extra_keys_schema": {"type": "integer"}
-    }
+    schema = {"type": "dict", "extra_keys_schema": {"type": "integer"}}
 
-    dct = {
-            "foo": '42',
-            "bar": '10'
-    }
+    dct = {"foo": "42", "bar": "10"}
 
     # when
     result = resolve(dct, schema)
 
     # then
-    assert result['foo'] == 42
-    assert result['bar'] == 10
+    assert result["foo"] == 42
+    assert result["bar"] == 10
 
 
 def test_parsing_of_list_elements():
     # given
-    schema = {
-        "type": "list",
-        "element_schema": {"type": "integer"}
-    }
+    schema = {"type": "list", "element_schema": {"type": "integer"}}
 
-    dct = ['10', '25']
+    dct = ["10", "25"]
 
     # when
     result = resolve(dct, schema)
 
     # then
     assert result == [10, 25]
-
-
-
 
 
 # "any" type
@@ -368,11 +350,7 @@ def test_all_types_preserved_when_any_is_used():
         "type": "any",
     }
 
-    dct = {
-            'foo': 'testing',
-            'bar': {'x': 1, 'y': 2},
-            'baz': [1, 2, 3]
-    }
+    dct = {"foo": "testing", "bar": {"x": 1, "y": 2}, "baz": [1, 2, 3]}
 
     # when
     result = resolve(dct, schema)
@@ -387,47 +365,33 @@ def test_interpolation_occurs_when_any_is_used():
         "type": "any",
     }
 
-    dct = {
-            'foo': 'testing',
-            'bar': '${self.foo} this'
-    }
+    dct = {"foo": "testing", "bar": "${self.foo} this"}
 
     # when
     result = resolve(dct, schema)
 
     # then
-    assert result['bar'] == 'testing this'
-
-
-
+    assert result["bar"] == "testing this"
 
 
 # nullable
 # ========
 
+
 def test_dictionary_can_be_nullable():
     # given
     schema = {
         "type": "dict",
-        "required_keys": {
-            "foo": {
-                "value_schema": {
-                    "type": "dict",
-                    "nullable": True
-                }
-            }
-        }
+        "required_keys": {"foo": {"value_schema": {"type": "dict", "nullable": True}}},
     }
 
-    dct = {
-        "foo": None
-    }
+    dct = {"foo": None}
 
     # when
     result = resolve(dct, schema)
 
     # then
-    assert result['foo'] is None
+    assert result["foo"] is None
 
 
 def test_list_can_be_nullable():
@@ -439,21 +403,19 @@ def test_list_can_be_nullable():
                 "value_schema": {
                     "type": "list",
                     "element_schema": {"type": "any"},
-                    "nullable": True
+                    "nullable": True,
                 }
             }
-        }
+        },
     }
 
-    dct = {
-        "foo": None
-    }
+    dct = {"foo": None}
 
     # when
     result = resolve(dct, schema)
 
     # then
-    assert result['foo'] is None
+    assert result["foo"] is None
 
 
 def test_leaf_can_be_nullable():
@@ -461,21 +423,14 @@ def test_leaf_can_be_nullable():
     schema = {
         "type": "dict",
         "required_keys": {
-            "foo": {
-                "value_schema": {
-                    "type": "integer",
-                    "nullable": True
-                }
-            }
-        }
+            "foo": {"value_schema": {"type": "integer", "nullable": True}}
+        },
     }
 
-    dct = {
-        "foo": None
-    }
+    dct = {"foo": None}
 
     # when
     result = resolve(dct, schema)
 
     # then
-    assert result['foo'] is None
+    assert result["foo"] is None

@@ -54,8 +54,13 @@ def validate_schema(schema):
         raise exceptions.SchemaError(exc, ())
 
 
-def resolve(raw_cfg, schema, external_variables=None, override_parsers=None,
-        schema_validator=validate_schema):
+def resolve(
+    raw_cfg,
+    schema,
+    external_variables=None,
+    override_parsers=None,
+    schema_validator=validate_schema,
+):
     """Resolve a raw configuration by interpolating and parsing its entries.
 
     The raw configuration can be a dictionary, list, or a non-container type;
@@ -148,19 +153,19 @@ def _build_configuration_tree_node(raw_cfg, schema):
         The configuration tree.
 
     """
-    if raw_cfg is None and schema['nullable']:
-        return _LeafNode.from_raw(None, {'type': 'any'})
+    if raw_cfg is None and schema["nullable"]:
+        return _LeafNode.from_raw(None, {"type": "any"})
 
     # construct the configuration tree
     # the configuration tree is a nested container whose terminal leaf values
     # are _LeafNodes. "Internal" nodes are dictionaries or lists.
     if isinstance(raw_cfg, dict):
-        if schema['type'] == 'any':
-            schema = {'type': 'dict', 'extra_keys_schema': {'type': 'any'}}
+        if schema["type"] == "any":
+            schema = {"type": "dict", "extra_keys_schema": {"type": "any"}}
         return _DictNode.from_raw(raw_cfg, schema)
     elif isinstance(raw_cfg, list):
-        if schema['type'] == 'any':
-            schema = {'type': 'list', 'element_schema': {'type': 'any'}}
+        if schema["type"] == "any":
+            schema = {"type": "list", "element_schema": {"type": "any"}}
         return _ListNode.from_raw(raw_cfg, schema)
     else:
         return _LeafNode.from_raw(raw_cfg, schema)
@@ -470,38 +475,32 @@ def _get_path(dct, exploded_path):
 # validation
 # ----------
 
+
 def _validate_schema(schema):
 
     _validate_general_schema(schema)
 
-    if schema['type'] == 'dict':
+    if schema["type"] == "dict":
         _validate_dict_schema(schema)
-    elif schema['type'] == 'list':
+    elif schema["type"] == "list":
         _validate_list_schema(schema)
-    elif schema['type'] == 'any':
+    elif schema["type"] == "any":
         _validate_any_schema(schema)
 
 
 def _try_to_resolve_without_validating(schema, schema_schema):
-    def nop(s): return
+    def nop(s):
+        return
+
     return resolve(schema, schema_schema, schema_validator=nop)
 
 
 def _validate_general_schema(schema):
     schema_schema = {
         "type": "dict",
-
-        "required_keys": {
-            "type": {"value_schema": {"type": "string"}}
-        },
-
-        "optional_keys": {
-            "nullable": {
-                "value_schema": {"type": "boolean"},
-            }
-        },
-
-        "extra_keys_schema": {"type": "any"}
+        "required_keys": {"type": {"value_schema": {"type": "string"}}},
+        "optional_keys": {"nullable": {"value_schema": {"type": "boolean"},}},
+        "extra_keys_schema": {"type": "any"},
     }
 
     _try_to_resolve_without_validating(schema, schema_schema)
@@ -510,35 +509,19 @@ def _validate_general_schema(schema):
 def _validate_dict_schema(dict_schema):
     dict_schema_schema = {
         "type": "dict",
-
-        "required_keys": {
-            "type": {"value_schema": {"type": "string"}}
-        },
-
+        "required_keys": {"type": {"value_schema": {"type": "string"}}},
         "optional_keys": {
-            "required_keys": {
-                "value_schema": {"type": "any"}
-            },
-
-            "optional_keys": {
-                "value_schema": {"type": "any"}
-            },
-
-            "extra_keys_schema": {
-                "value_schema": {"type": "any"}
-            },
-
-            "nullable": {
-                "value_schema": {"type": "boolean"},
-            }
-
-        }
+            "required_keys": {"value_schema": {"type": "any"}},
+            "optional_keys": {"value_schema": {"type": "any"}},
+            "extra_keys_schema": {"value_schema": {"type": "any"}},
+            "nullable": {"value_schema": {"type": "boolean"},},
+        },
     }
 
     _try_to_resolve_without_validating(dict_schema, dict_schema_schema)
 
-    required_keys = dict_schema.get('required_keys', {})
-    optional_keys = dict_schema.get('optional_keys', {})
+    required_keys = dict_schema.get("required_keys", {})
+    optional_keys = dict_schema.get("optional_keys", {})
 
     for key_spec in required_keys.values():
         _validate_required_key_spec(key_spec)
@@ -547,70 +530,49 @@ def _validate_dict_schema(dict_schema):
         _validate_optional_key_spec(key_spec)
 
     if "extra_keys_schema" in dict_schema:
-        _validate_schema(dict_schema['extra_keys_schema'])
+        _validate_schema(dict_schema["extra_keys_schema"])
 
 
 def _validate_required_key_spec(key_spec):
     key_spec_schema = {
         "type": "dict",
-        "required_keys": {
-            "value_schema": {
-                "value_schema": {"type": "any"}
-            }
-        }
+        "required_keys": {"value_schema": {"value_schema": {"type": "any"}}},
     }
 
     _try_to_resolve_without_validating(key_spec, key_spec_schema)
-    _validate_schema(key_spec['value_schema'])
+    _validate_schema(key_spec["value_schema"])
 
 
 def _validate_optional_key_spec(key_spec):
     key_spec_schema = {
         "type": "dict",
-        "required_keys": {
-            "value_schema": {
-                "value_schema": {"type": "any"}
-            }
-        },
-        "optional_keys": {
-            "default": {"value_schema": {"type": "any"}}
-        }
+        "required_keys": {"value_schema": {"value_schema": {"type": "any"}}},
+        "optional_keys": {"default": {"value_schema": {"type": "any"}}},
     }
 
     _try_to_resolve_without_validating(key_spec, key_spec_schema)
-    _validate_schema(key_spec['value_schema'])
+    _validate_schema(key_spec["value_schema"])
 
 
 def _validate_list_schema(list_schema):
     list_schema_schema = {
         "type": "dict",
         "required_keys": {
-            "type": {
-                "value_schema": {"type": "string"}
-            },
-            "element_schema": {
-                "value_schema": {"type": "any"}
-            }
+            "type": {"value_schema": {"type": "string"}},
+            "element_schema": {"value_schema": {"type": "any"}},
         },
-        "optional_keys": {
-            "nullable": {
-                "value_schema": {"type": "boolean"},
-            }
-        }
+        "optional_keys": {"nullable": {"value_schema": {"type": "boolean"},}},
     }
 
     _try_to_resolve_without_validating(list_schema, list_schema_schema)
-    _validate_schema(list_schema['element_schema'])
+    _validate_schema(list_schema["element_schema"])
 
 
 def _validate_any_schema(any_schema):
     any_schema_schema = {
-        'type': 'dict',
-        'required_keys': {"type": {"value_schema": {"type": "string"}}},
-        'optional_keys': {
-            "nullable": {"value_schema": {"type": "boolean"},
-                }
-        }
+        "type": "dict",
+        "required_keys": {"type": {"value_schema": {"type": "string"}}},
+        "optional_keys": {"nullable": {"value_schema": {"type": "boolean"},}},
     }
 
     _try_to_resolve_without_validating(any_schema, any_schema_schema)
