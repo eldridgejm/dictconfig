@@ -154,22 +154,28 @@ def _build_configuration_tree_node(raw_cfg, schema, path=tuple()):
 
     """
     if raw_cfg is None:
-        if 'nullable' in schema and schema["nullable"]:
+        if "nullable" in schema and schema["nullable"]:
             return _LeafNode.from_raw(None, {"type": "any"}, path)
         else:
-            dotted = '.'.join(path)
-            raise exceptions.ResolutionError(f'{dotted} is unexpectedly null.') 
+            dotted = ".".join(path)
+            raise exceptions.ResolutionError(f"{dotted} is unexpectedly null.")
 
     # construct the configuration tree
     # the configuration tree is a nested container whose terminal leaf values
     # are _LeafNodes. "Internal" nodes are dictionaries or lists.
     if isinstance(raw_cfg, dict):
         if schema["type"] == "any":
-            schema = {"type": "dict", "extra_keys_schema": {"type": "any"}}
+            schema = {
+                "type": "dict",
+                "extra_keys_schema": {"type": "any", "nullable": True},
+            }
         return _DictNode.from_raw(raw_cfg, schema, path)
     elif isinstance(raw_cfg, list):
         if schema["type"] == "any":
-            schema = {"type": "list", "element_schema": {"type": "any"}}
+            schema = {
+                "type": "list",
+                "element_schema": {"type": "any", "nullable": True},
+            }
         return _ListNode.from_raw(raw_cfg, schema, path)
     else:
         return _LeafNode.from_raw(raw_cfg, schema, path)
@@ -556,7 +562,9 @@ def _validate_optional_key_spec(key_spec):
     key_spec_schema = {
         "type": "dict",
         "required_keys": {"value_schema": {"value_schema": {"type": "any"}}},
-        "optional_keys": {"default": {"value_schema": {"type": "any"}}},
+        "optional_keys": {
+            "default": {"value_schema": {"type": "any", "nullable": True},}
+        },
     }
 
     _try_to_resolve_without_validating(key_spec, key_spec_schema)

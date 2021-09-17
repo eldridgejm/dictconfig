@@ -79,6 +79,19 @@ def test_raises_if_unknown_key_is_provided_for_list_schema():
         validate_schema(schema)
 
 
+# nullable
+# ========
+
+
+def test_allow_defaults_to_be_null():
+    schema = {
+        "type": "dict",
+        "optional_keys": {"foo": {"default": None, "value_schema": {"type": "any"}}},
+    }
+
+    validate_schema(schema)
+
+
 # any types
 # =========
 
