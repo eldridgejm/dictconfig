@@ -5,12 +5,6 @@ class Error(Exception):
 class SchemaError(Error):
     """An error while validating an dictconfig schema."""
 
-    def __init__(self, message, path):
-        dotted_path = ".".join(path)
-        self.message = f'When parsing "{dotted_path}": {message}'
-        self.path = path
-        super().__init__(self, self.message)
-
 
 class ResolutionError(Error):
     """An error while resolving an dictconfig."""
@@ -18,6 +12,13 @@ class ResolutionError(Error):
 
 class MissingKeyError(ResolutionError):
     """A required key is missing."""
+
+    def __init__(self, path):
+        self.path = path
+
+    def __str__(self):
+        dotted = ".".join(self.path)
+        return f'Missing key at path: "{dotted}".'
 
 
 class ExtraKeyError(ResolutionError):

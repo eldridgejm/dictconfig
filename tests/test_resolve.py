@@ -28,8 +28,10 @@ def test_raises_if_required_keys_are_missing():
     dct = {"foo": 42}
 
     # when
-    with raises(exceptions.MissingKeyError):
+    with raises(exceptions.MissingKeyError) as excinfo:
         resolve(dct, schema)
+
+    assert excinfo.value.path == ("bar",)
 
 
 def test_raises_if_extra_keys_without_extra_keys_schema():
@@ -434,3 +436,49 @@ def test_leaf_can_be_nullable():
 
     # then
     assert result["foo"] is None
+
+
+# good exceptions
+# ===============
+
+
+def test_exception_has_correct_path_with_missing_key_in_nested_dict():
+    # given
+    schema = {
+        "type": "dict",
+        "required_keys": {
+            "foo": {
+                "value_schema": {
+                    "type": "dict",
+                    "required_keys": {"bar": {"value_schema": {"type": "any"}}},
+                }
+            },
+        },
+    }
+
+    dct = {"foo": {}}
+
+    # when
+    with raises(exceptions.MissingKeyError) as excinfo:
+        resolve(dct, schema)
+
+    assert excinfo.value.path == ("foo", "bar",)
+
+
+def test_exception_has_correct_path_with_missing_key_in_nested_dict_within_list():
+    # given
+    schema = {
+        "type": "list",
+        "element_schema": {
+            "type": "dict",
+            "required_keys": {"foo": {"value_schema": {"type": "integer",}},},
+        },
+    }
+
+    lst = [{"foo": 10,}, {"bar": 42}]
+
+    # when
+    with raises(exceptions.MissingKeyError) as excinfo:
+        resolve(lst, schema)
+
+    assert excinfo.value.path == (1, "foo")

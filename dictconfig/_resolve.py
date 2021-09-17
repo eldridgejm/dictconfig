@@ -51,7 +51,7 @@ def validate_schema(schema):
     try:
         _validate_schema(schema)
     except exceptions.ResolutionError as exc:
-        raise exceptions.SchemaError(exc, ())
+        raise exceptions.SchemaError(exc)
 
 
 def resolve(
@@ -133,7 +133,7 @@ def _update_parsers(overrides):
 #       nodes.
 
 
-def _build_configuration_tree_node(raw_cfg, schema):
+def _build_configuration_tree_node(raw_cfg, schema, path=tuple()):
     """Recursively constructs a configuration tree from a raw configuration.
 
     The raw configuration can be a dictionary, list, or a non-container type. In any
@@ -154,7 +154,7 @@ def _build_configuration_tree_node(raw_cfg, schema):
 
     """
     if raw_cfg is None and schema["nullable"]:
-        return _LeafNode.from_raw(None, {"type": "any"})
+        return _LeafNode.from_raw(None, {"type": "any"}, path)
 
     # construct the configuration tree
     # the configuration tree is a nested container whose terminal leaf values
@@ -162,13 +162,13 @@ def _build_configuration_tree_node(raw_cfg, schema):
     if isinstance(raw_cfg, dict):
         if schema["type"] == "any":
             schema = {"type": "dict", "extra_keys_schema": {"type": "any"}}
-        return _DictNode.from_raw(raw_cfg, schema)
+        return _DictNode.from_raw(raw_cfg, schema, path)
     elif isinstance(raw_cfg, list):
         if schema["type"] == "any":
             schema = {"type": "list", "element_schema": {"type": "any"}}
-        return _ListNode.from_raw(raw_cfg, schema)
+        return _ListNode.from_raw(raw_cfg, schema, path)
     else:
-        return _LeafNode.from_raw(raw_cfg, schema)
+        return _LeafNode.from_raw(raw_cfg, schema, path)
 
 
 # denotes that a node is currently being resolved
@@ -192,13 +192,13 @@ class _DictNode:
         self.children = children
 
     @classmethod
-    def from_raw(cls, dct, dict_schema):
+    def from_raw(cls, dct, dict_schema, path):
         """Construct a _DictNode from a raw configuration dictionary and its schema."""
         children = {}
 
-        _handle_required_keys(children, dct, dict_schema)
-        _handle_optional_keys(children, dct, dict_schema)
-        _handle_extra_keys(children, dct, dict_schema)
+        _handle_required_keys(children, dct, dict_schema, path)
+        _handle_optional_keys(children, dct, dict_schema, path)
+        _handle_extra_keys(children, dct, dict_schema, path)
 
         return cls(children)
 
@@ -210,19 +210,19 @@ class _DictNode:
         return {key: child.resolve(resolver) for key, child in self.children.items()}
 
 
-def _handle_required_keys(children, dct, dict_schema):
+def _handle_required_keys(children, dct, dict_schema, path):
     required_keys = dict_schema.get("required_keys", {})
 
     for key, key_spec in required_keys.items():
         if key not in dct:
-            raise exceptions.MissingKeyError(f"Missing required key: {key}.")
+            raise exceptions.MissingKeyError(path + (key,))
 
         children[key] = _build_configuration_tree_node(
-            dct[key], key_spec["value_schema"]
+            dct[key], key_spec["value_schema"], path + (key,)
         )
 
 
-def _handle_optional_keys(children, dct, dict_schema):
+def _handle_optional_keys(children, dct, dict_schema, path):
     optional_keys = dict_schema.get("optional_keys", {})
 
     for key, key_spec in optional_keys.items():
@@ -236,21 +236,26 @@ def _handle_optional_keys(children, dct, dict_schema):
             # key is missing and no default was provided
             continue
 
-        children[key] = _build_configuration_tree_node(value, key_spec["value_schema"])
+        children[key] = _build_configuration_tree_node(
+            value, key_spec["value_schema"], path + (key,)
+        )
 
 
-def _handle_extra_keys(children, dct, dict_schema):
+def _handle_extra_keys(children, dct, dict_schema, path):
     required_keys = dict_schema.get("required_keys", {})
     optional_keys = dict_schema.get("optional_keys", {})
     expected_keys = set(required_keys) | set(optional_keys)
     extra_keys = dct.keys() - expected_keys
 
     if extra_keys and "extra_keys_schema" not in dict_schema:
-        raise exceptions.ExtraKeyError(f"Unexpected extra keys: {extra_keys}")
+        dotted = ".".join(path)
+        raise exceptions.ExtraKeyError(
+            f"Unexpected extra keys in {dotted}: {extra_keys}"
+        )
 
     for key in extra_keys:
         children[key] = _build_configuration_tree_node(
-            dct[key], dict_schema["extra_keys_schema"]
+            dct[key], dict_schema["extra_keys_schema"], path + (key,)
         )
 
 
@@ -268,13 +273,13 @@ class _ListNode:
         self.children = children
 
     @classmethod
-    def from_raw(cls, lst, list_schema):
+    def from_raw(cls, lst, list_schema, path):
         """Make an internal list node from a raw list and recurse on the children."""
         child_schema = list_schema["element_schema"]
 
         children = []
-        for lst_value in lst:
-            r = _build_configuration_tree_node(lst_value, child_schema)
+        for i, lst_value in enumerate(lst):
+            r = _build_configuration_tree_node(lst_value, child_schema, path + (i,))
             children.append(r)
 
         return cls(children)
@@ -316,7 +321,7 @@ class _LeafNode:
         self._resolved = _UNDISCOVERED
 
     @classmethod
-    def from_raw(cls, raw, leaf_schema, nullable=False):
+    def from_raw(cls, raw, leaf_schema, path, nullable=False):
         """Create a leaf node from the raw configuration and schema."""
         return cls(raw, leaf_schema["type"], nullable)
 
