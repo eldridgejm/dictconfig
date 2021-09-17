@@ -197,7 +197,7 @@ three string-type leaf nodes as children.</p>
 lists. Leaf nodes are non-container types, like strings, numbers, etc.</p>
 <p>A <em>schema</em> defines the type of each of the nodes (internal and leaf) of the
 configuration tree.  The “grammar” of a schema is roughly as follows:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>&lt;SCHEMA&gt; = (&lt;DICT_SCHEMA&gt; | &lt;LIST_SCHEMA&gt; | &lt;LEAF_SCHEMA&gt;)
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>&lt;SCHEMA&gt; = (&lt;DICT_SCHEMA&gt; | &lt;LIST_SCHEMA&gt; | &lt;LEAF_SCHEMA&gt; | &lt;ANY_SCHEMA&gt;)
 
 &lt;DICT_SCHEMA&gt; = &lt;DICT_SCHEMA_BY_KEY&gt; | &lt;DICT_SCHEMA_FOR_ALL_KEYS&gt;
 
@@ -221,12 +221,16 @@ configuration tree.  The “grammar” of a schema is roughly as follows:</p>
 }
 
 &lt;LEAF_SCHEMA&gt; = {
-    &quot;type&quot;: (&quot;string&quot; | &quot;integer&quot; | &quot;float&quot; | &quot;boolean&quot; | &quot;datetime&quot; | &quot;any&quot;)
+    &quot;type&quot;: (&quot;string&quot; | &quot;integer&quot; | &quot;float&quot; | &quot;boolean&quot; | &quot;datetime&quot;)
+}
+
+&lt;ANY_SCHEMA&gt; = {
+    &quot;type&quot;: &quot;any&quot;
 }
 </pre></div>
 </div>
-<p>A leaf type of “any” denotes that the raw leaf value will be left as-is, and will not be
-parsed.</p>
+<p>A type of “any” denotes that the configuration option will be left as-is with no parsing,
+however, interpolation still takes place.</p>
 <p>Optionally, a leaf value can be “nullable”, meaning that <cite>None</cite> is a valid type. By default,
 the leaf values are not nullable.</p>
 <p>This grammar is a subset of that defined by the <a class="reference external" href="https://docs.python-cerberus.org/en/stable/">Cerberus</a> dict validator.

@@ -147,7 +147,7 @@ configuration tree.  The "grammar" of a schema is roughly as follows:
 
 .. code:: text
 
-    <SCHEMA> = (<DICT_SCHEMA> | <LIST_SCHEMA> | <LEAF_SCHEMA>)
+    <SCHEMA> = (<DICT_SCHEMA> | <LIST_SCHEMA> | <LEAF_SCHEMA> | <ANY_SCHEMA>)
 
     <DICT_SCHEMA> = <DICT_SCHEMA_BY_KEY> | <DICT_SCHEMA_FOR_ALL_KEYS>
 
@@ -171,11 +171,15 @@ configuration tree.  The "grammar" of a schema is roughly as follows:
     }
 
     <LEAF_SCHEMA> = {
-        "type": ("string" | "integer" | "float" | "boolean" | "datetime" | "any")
+        "type": ("string" | "integer" | "float" | "boolean" | "datetime")
     }
 
-A leaf type of "any" denotes that the raw leaf value will be left as-is, and will not be
-parsed.
+    <ANY_SCHEMA> = {
+        "type": "any"
+    }
+
+A type of "any" denotes that the configuration option will be left as-is with no parsing,
+however, interpolation still takes place.
 
 Optionally, a leaf value can be "nullable", meaning that `None` is a valid type. By default,
 the leaf values are not nullable.
