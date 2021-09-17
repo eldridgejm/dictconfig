@@ -7,7 +7,7 @@ The "grammar" of an dictconfig schema is as follows:
 
 .. code::
 
-    <SCHEMA> = (<DICT_SCHEMA> | <LIST_SCHEMA> | <LEAF_SCHEMA>)
+    <SCHEMA> = (<DICT_SCHEMA> | <LIST_SCHEMA> | <LEAF_SCHEMA> | <ANY_SCHEMA>)
 
     <DICT_SCHEMA> = <DICT_SCHEMA_BY_KEY> | <DICT_SCHEMA_FOR_ALL_KEYS>
 
@@ -31,7 +31,11 @@ The "grammar" of an dictconfig schema is as follows:
     }
 
     <LEAF_SCHEMA> = {
-        "type": ("string" | "integer" | "float" | "boolean" | "datetime" | "any")
+        "type": ("string" | "integer" | "float" | "boolean" | "datetime")
+    }
+
+    <ANY_SCHEMA> = {
+        "type": "any"
     }
 
 

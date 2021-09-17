@@ -24,7 +24,7 @@ supplied when the node is instantiated, it is thought cleaner to keep it separat
 """
 import re
 
-from ._schema import validate_dict_schema, validate_list_schema, validate_leaf_schema
+from ._schema import validate_schema
 from . import exceptions
 from . import parsers as _parsers
 
@@ -72,8 +72,10 @@ def resolve(raw_cfg, schema, external_variables=None, override_parsers=None):
             'external_variables cannot contain a "self" key; it is reserved.'
         )
 
+    validate_schema(schema)
+
     parsers = _update_parsers(override_parsers)
-    root = _build_configuration_tree(raw_cfg, schema)
+    root = _build_configuration_tree_node(raw_cfg, schema)
     resolver = _Resolver(root, external_variables, parsers)
     return root.resolve(resolver)
 
@@ -104,7 +106,7 @@ def _update_parsers(overrides):
 #       nodes.
 
 
-def _build_configuration_tree(raw_cfg, schema):
+def _build_configuration_tree_node(raw_cfg, schema):
     """Recursively constructs a configuration tree from a raw configuration.
 
     The raw configuration can be a dictionary, list, or a non-container type. In any
@@ -127,18 +129,19 @@ def _build_configuration_tree(raw_cfg, schema):
     # construct the configuration tree
     # the configuration tree is a nested container whose terminal leaf values
     # are _LeafNodes. "Internal" nodes are dictionaries or lists.
-    args = (raw_cfg, schema)
     if isinstance(raw_cfg, dict):
-        validate_dict_schema(schema)
-        root = _DictNode.from_raw(*args)
-    elif isinstance(raw_cfg, list):
-        validate_list_schema(schema)
-        root = _ListNode.from_raw(*args)
-    else:
-        validate_leaf_schema(schema)
-        root = _LeafNode.from_raw(*args)
+        if schema['type'] == 'any':
+            schema = {'type': 'dict', 'valuesrules': {'type': 'any'}}
 
-    return root
+        return _DictNode.from_raw(raw_cfg, schema)
+    elif isinstance(raw_cfg, list):
+        if schema['type'] == 'any':
+            schema = {'type': 'list', 'schema': {'type': 'any'}}
+
+        return _ListNode.from_raw(raw_cfg, schema)
+    else:
+        nullable = False if "nullable" not in schema else schema['nullable']
+        return _LeafNode.from_raw(raw_cfg, schema, nullable)
 
 
 # denotes that a node is currently being resolved
@@ -146,6 +149,78 @@ _PENDING = object()
 
 # denotes that the leaf node has not yet been discovered
 _UNDISCOVERED = object()
+
+
+class _DictNode:
+    """Represents an internal dictionary node in a configuration tree.
+
+    Attributes
+    ----------
+    children
+        A dictionary of child nodes.
+
+    """
+
+    def __init__(self, children):
+        self.children = children
+
+    @classmethod
+    def from_raw(cls, dct, dict_schema):
+        """Construct a _DictNode from a raw configuration dictionary and its schema."""
+        children = {}
+
+        for dct_key, dct_value in dct.items():
+            if "valuesrules" in dict_schema:
+                child_schema = dict_schema["valuesrules"]
+            else:
+                try:
+                    child_schema = dict_schema["schema"][dct_key]
+                except KeyError:
+                    child_schema = {"type": "any"}
+
+            children[dct_key] = _build_configuration_tree_node(dct_value, child_schema)
+
+        return cls(children)
+
+    def __getitem__(self, key):
+        return self.children[key]
+
+    def resolve(self, resolver):
+        """Recursively resolve the _DictNode into a dictionary."""
+        return {key: child.resolve(resolver) for key, child in self.children.items()}
+
+
+class _ListNode:
+    """Represents an internal list node in a configuration tree.
+
+    Attributes
+    ----------
+    children
+        A list of the node's children.
+
+    """
+
+    def __init__(self, children):
+        self.children = children
+
+    @classmethod
+    def from_raw(cls, lst, list_schema):
+        """Make an internal list node from a raw list and recurse on the children."""
+        child_schema = list_schema["schema"]
+
+        children = []
+        for lst_value in lst:
+            r = _build_configuration_tree_node(lst_value, child_schema)
+            children.append(r)
+
+        return cls(children)
+
+    def __getitem__(self, ix):
+        return self.children[ix]
+
+    def resolve(self, resolver):
+        """Recursively resolve the _ListNode into a list."""
+        return [child.resolve(resolver) for child in self.children]
 
 
 class _LeafNode:
@@ -236,94 +311,6 @@ class _LeafNode:
         else:
             self._resolved = resolver.parse(s, self.type_)
         return self._resolved
-
-
-class _DictNode:
-    """Represents an internal dictionary node in a configuration tree.
-
-    Attributes
-    ----------
-    children
-        A dictionary of child nodes.
-
-    """
-
-    def __init__(self, children):
-        self.children = children
-
-    @classmethod
-    def from_raw(cls, dct, dict_schema):
-        """Construct a _DictNode from a raw configuration dictionary and its schema."""
-        children = {}
-
-        for dct_key, dct_value in dct.items():
-            if "valuesrules" in dict_schema:
-                child_schema = dict_schema["valuesrules"]
-            else:
-                try:
-                    child_schema = dict_schema["schema"][dct_key]
-                except KeyError:
-                    child_schema = {"type": "any"}
-
-            args = (dct_value, child_schema)
-
-            if child_schema["type"] == "dict":
-                children[dct_key] = _DictNode.from_raw(*args)
-            elif child_schema["type"] == "list":
-                children[dct_key] = _ListNode.from_raw(*args)
-            else:
-                if "nullable" in child_schema:
-                    args = args + (child_schema["nullable"],)
-                children[dct_key] = _LeafNode.from_raw(*args)
-
-        return cls(children)
-
-    def __getitem__(self, key):
-        return self.children[key]
-
-    def resolve(self, resolver):
-        """Recursively resolve the _DictNode into a dictionary."""
-        return {key: child.resolve(resolver) for key, child in self.children.items()}
-
-
-class _ListNode:
-    """Represents an internal list node in a configuration tree.
-
-    Attributes
-    ----------
-    children
-        A list of the node's children.
-
-    """
-
-    def __init__(self, children):
-        self.children = children
-
-    @classmethod
-    def from_raw(cls, lst, list_schema):
-        """Make an internal list node from a raw list and recurse on the children."""
-        child_schema = list_schema["schema"]
-
-        children = []
-        for lst_value in lst:
-            args = (lst_value, child_schema)
-            if child_schema["type"] == "dict":
-                r = _DictNode.from_raw(*args)
-            elif child_schema["type"] == "list":
-                r = _ListNode.from_raw(*args)
-            else:
-                r = _LeafNode.from_raw(*args)
-            children.append(r)
-
-        return cls(children)
-
-    def __getitem__(self, ix):
-        return self.children[ix]
-
-    def resolve(self, resolver):
-        """Recursively resolve the _ListNode into a list."""
-        return [child.resolve(resolver) for child in self.children]
-
 
 # resolver
 # --------

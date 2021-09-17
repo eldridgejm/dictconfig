@@ -464,3 +464,38 @@ def test_custom_leaf_type_raises_if_no_parser_provided():
     # when
     with raises(exceptions.ResolutionError):
         result = resolve(dct, schema, override_parsers=overrides)
+
+
+def test_reference_of_a_part_of_config_without_a_schema():
+    # given
+    schema = {"type": "dict", "schema": {}}
+    dct = {"x": {"foo": "this"}, "y": "testing ${self.x.foo}"}
+
+    # when
+    resolved = resolve(dct, schema)
+
+    # then
+    assert resolved['y'] == 'testing this'
+
+
+def test_top_level_any():
+    # given
+    schema = {"type": "any"}
+    dct = {"x": {"foo": "this"}, "y": "testing ${self.x.foo}"}
+
+    # when
+    resolved = resolve(dct, schema)
+
+    # then
+    assert resolved['y'] == 'testing this'
+    assert resolved['x']['foo'] == 'this'
+
+
+def test_resolve_validates_schema():
+    # given
+    schema = {"typez": "any"}
+    dct = {"x": {"foo": "this"}, "y": "testing ${self.x.foo}"}
+
+    # when
+    with raises(exceptions.SchemaError):
+        resolved = resolve(dct, schema)
