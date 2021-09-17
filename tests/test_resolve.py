@@ -4,20 +4,17 @@ from dictconfig import resolve, exceptions, parsers
 
 from pytest import raises
 
+# 1. are defaults used?
+# 2. are missing values reported?
+# 3. does interpolation occur?
+# 4. are types checked?
+# 5. is nullible enforced?
+# 6. is parsing done as expected?
 
-def test_if_path_not_in_schema_type_inferred_to_be_string():
-    schema = {
-        "type": "dict",
-        "schema": {"foo": {"type": "string"}, "bar": {"type": "string"},},
-    }
+# defaults
+# ========
 
-    dct = {"foo": "hi", "bar": "this is ${self.foo}", "baz": "testing"}
-
-    result = resolve(dct, schema)
-
-    # then
-    assert result["bar"] == "this is hi"
-    assert result["baz"] == "testing"
+def test_fills_in_defaults_for_missing
 
 
 def test_with_dicts():
@@ -490,12 +487,18 @@ def test_top_level_any():
     assert resolved['y'] == 'testing this'
     assert resolved['x']['foo'] == 'this'
 
+def test_if_path_not_in_schema_type_inferred_to_be_string():
+    schema = {
+        "type": "dict",
+        "schema": {"foo": {"type": "string"}, "bar": {"type": "string"},},
+    }
 
-def test_resolve_validates_schema():
-    # given
-    schema = {"typez": "any"}
-    dct = {"x": {"foo": "this"}, "y": "testing ${self.x.foo}"}
+    dct = {"foo": "hi", "bar": "this is ${self.foo}", "baz": "testing"}
 
-    # when
-    with raises(exceptions.SchemaError):
-        resolved = resolve(dct, schema)
+    result = resolve(dct, schema)
+
+    # then
+    assert result["bar"] == "this is hi"
+    assert result["baz"] == "testing"
+
+

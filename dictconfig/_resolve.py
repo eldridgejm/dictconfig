@@ -24,7 +24,6 @@ supplied when the node is instantiated, it is thought cleaner to keep it separat
 """
 import re
 
-from ._schema import validate_schema
 from . import exceptions
 from . import parsers as _parsers
 
@@ -71,8 +70,6 @@ def resolve(raw_cfg, schema, external_variables=None, override_parsers=None):
         raise ValueError(
             'external_variables cannot contain a "self" key; it is reserved.'
         )
-
-    validate_schema(schema)
 
     parsers = _update_parsers(override_parsers)
     root = _build_configuration_tree_node(raw_cfg, schema)

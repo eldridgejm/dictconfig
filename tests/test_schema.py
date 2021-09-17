@@ -7,24 +7,26 @@ def test_validate_schema_infers_dict_schema_smoke():
     # given
     schema = {
         "type": "dict",
-        "schema": {"foo": {"type": "string"}, "bar": {"type": "integer"},},
+        "keys": {
+            "foo": {
+                "required": False,
+                "value": {"type": "string"}
+            },
+            "bar": {
+                "value": {"type": "integer"}
+            }
+        },
+        "extravalues": {
+            "type": "string"
+        }
     }
 
     # then (no exceptions raised)
     validate_schema(schema)
 
-
-def test_validate_schema_with_valuesrules_smoke():
-    # given
-    schema = {"type": "dict", "valuesrules": {"type": "integer"}}
-
-    # then (no exceptions raised)
-    validate_schema(schema)
-
-
 def test_validate_schema_infers_list_schema_smoke():
     # given
-    schema = {"type": "list", "schema": {"type": "string"}}
+    schema = {"type": "list", "elements": {"type": "string"}}
 
     # then (no exceptions raised)
     validate_schema(schema)
@@ -40,72 +42,40 @@ def test_validate_schema_infers_leaf_schema_smoke():
     validate_schema(schema)
 
 
-def test_must_be_a_dictionary():
-    # given
-    schema = "testing"
-
-    # then
-    with raises(exceptions.SchemaError) as exc:
-        validate_schema(schema)
-
-    assert exc.value.path == tuple()
-
-
-def test_keys_must_be_strings():
-    # given
-    schema = {1: {"type": "string"}}
-
-    # then
-    with raises(exceptions.SchemaError) as exc:
-        validate_schema(schema)
-
-    assert exc.value.path == tuple()
-
-
-def test_must_have_type():
-    # given
-    schema = {"name": "testing"}
-
-    # then
-    with raises(exceptions.SchemaError) as exc:
-        validate_schema(schema)
-
-
-def test_dict_schema_must_have_child_schema():
-    # given
-    schema = {"type": "dict", "name": "testing"}
-
-    # then
-    with raises(exceptions.SchemaError) as exc:
-        validate_schema(schema)
-
-
-def test_list_schema_must_have_child_schema():
-    # given
-    schema = {"type": "list", "name": "testing"}
-
-    # then
-    with raises(exceptions.SchemaError) as exc:
-        validate_schema(schema)
-
-
-def test_schema_nested_error_has_correct_path():
+def test_dict_schema_has_extra_keys_raises():
     # given
     schema = {
         "type": "dict",
-        "schema": {"foo": {"type": "dict", "schema": {"bar": {"typeoz": "integer"},}}},
+        "thisdoesntbelong": 42,
+        "keys": {
+            "foo": {
+                "required": False,
+                "value": {"type": "string"}
+            },
+            "bar": {
+                "value": {"type": "integer"}
+            }
+        },
+        "extravalues": {
+            "type": "string"
+        }
     }
 
     # then
-    with raises(exceptions.SchemaError) as exc:
+    with raises(exceptions.SchemaError):
         validate_schema(schema)
 
-    assert exc.value.path == tuple(["foo", "bar"])
 
-
-def test_smoke_with_custom_leaf_type_doesnt_raise():
+def test_dict_schema_keys_field_is_not_dict_raises():
     # given
-    schema = {"type": "foo"}
+    schema = {
+        "type": "dict",
+        "keys": 42,
+        "extravalues": {
+            "type": "string"
+        }
+    }
 
     # then
-    validate_schema(schema)
+    with raises(exceptions.SchemaError):
+        validate_schema(schema)
