@@ -82,16 +82,20 @@
 configuration settings from a file (usually JSON or YAML) into a Python
 dictionary. While this is convenient, this approach has some limitations;
 namely, fields within a JSON or YAML file cannot make use of variables, nor can
-they reference one another.</p>
-<p><cite>dictconfig</cite> is a Python package that aims to ease these limitations by
-supporting:</p>
+they reference one another. Furthermore, it’s often desirable to perform some
+basic validation of the configuration settings to ensure that all of the
+required values are provided and to fill in missing values with suitable
+defaults.</p>
+<p><cite>dictconfig</cite> is a Python package that aims to support this use case. It provides
+the following features:</p>
 <ol class="arabic simple">
-<li><p><strong>External Variables</strong>: Configuration values can reference external
-variables supplied by the program reading the configuration.</p></li>
-<li><p><strong>Internal References</strong>: The configuration can reference other settings
-within the same configuration.</p></li>
-<li><p><strong>Domain-specific languages</strong>: Custom parsers can be provided to convert
-configuration options to Python types in a domain-specific way. <cite>dateconfig</cite>
+<li><p><strong>Basic Validation</strong>: Check that require values are provided and fill in
+missing optional values with defaults.</p></li>
+<li><p><strong>Interpolation</strong> Configuration values can reference other parts of the configuration,
+or even external variables supplied by the program reading the
+configuration.</p></li>
+<li><p><strong>Domain-specific Parsing</strong>: Custom parsers can be provided to convert
+configuration options to Python types in a domain-specific way. <cite>dictconfig</cite>
 comes with parsers for interpreting arithmetic expressions (e.g., <cite>“(4 + 6) / 2”</cite>),
 logical expressions (e.g., <cite>“True and (False or True)”</cite>), and relative datetimes
 (e.g., <cite>“7 days after 2021-10-10”</cite>).</p></li>
@@ -123,19 +127,19 @@ that says that the keys <cite>x</cite>, <cite>y</cite>, and <cite>z</cite> are a
 and <cite>due</cite> are dates:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">schema</span> <span class="o">=</span> <span class="p">{</span>
     <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;dict&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;schema&quot;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">},</span>
-        <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">},</span>
-        <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">},</span>
-        <span class="s2">&quot;released&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;date&quot;</span><span class="p">},</span>
-        <span class="s2">&quot;due&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;date&quot;</span><span class="p">}</span>
+    <span class="s2">&quot;required_keys&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;value_schema&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">}},</span>
+        <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;value_schema&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">}},</span>
+        <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;value_schema&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">}},</span>
+        <span class="s2">&quot;released&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;value_schema&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;date&quot;</span><span class="p">}},</span>
+        <span class="s2">&quot;due&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;value_schema&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;date&quot;</span><span class="p">},</span>
     <span class="p">}</span>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>As can be seen from above, a schema is a nested dictionary describing the expected
-types of configuration values. For a more precise definition of a schema, see the
-<a class="reference internal" href="#schemata">Schemata</a> section below.</p>
+<p>As can be seen from above, a schema is a nested dictionary describing which
+configuration keys are required and what their types should be. For a more
+precise definition of a schema, see the <a class="reference internal" href="#schemata">Schemata</a> section below.</p>
 <p>Next, we call <code class="code docutils literal notranslate"><span class="pre">dictconfig.resolve()</span></code> to <em>resolve</em> the configuration. We provide
 a dictionary of external variables that can be resolved.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">dictconfig</span>
@@ -199,29 +203,32 @@ lists. Leaf nodes are non-container types, like strings, numbers, etc.</p>
 configuration tree.  The “grammar” of a schema is roughly as follows:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>&lt;SCHEMA&gt; = (&lt;DICT_SCHEMA&gt; | &lt;LIST_SCHEMA&gt; | &lt;LEAF_SCHEMA&gt; | &lt;ANY_SCHEMA&gt;)
 
-&lt;DICT_SCHEMA&gt; = &lt;DICT_SCHEMA_BY_KEY&gt; | &lt;DICT_SCHEMA_FOR_ALL_KEYS&gt;
-
-&lt;DICT_SCHEMA_BY_KEY&gt; = {
+&lt;DICT_SCHEMA&gt; = {
     &quot;type&quot;: &quot;dict&quot;,
-    schema = {
-        key_1: &lt;SCHEMA&gt;,
-        [key_2: &lt;SCHEMA&gt;,]
-        [key_3: &lt;SCHEMA&gt;,]
-    }
+    [&quot;required_keys&quot;: {&lt;KEY_NAME&gt;: &lt;REQUIRED_KEY_SPEC&gt;, ...}],
+    [&quot;optional_keys&quot;: {&lt;KEY_NAME&gt;: &lt;OPTIONAL_KEY_SPEC&gt;, ...}],
+    [&quot;extra_keys_schema&quot;: &lt;SCHEMA&gt;],
+    [&quot;nullable&quot;: (True | False)],
 }
 
-&lt;DICT_SCHEMA_FOR_ALL_KEYS&gt; = {
-    &quot;type&quot;: &quot;dict&quot;,
-    &quot;valuesrules&quot; = &lt;SCHEMA&gt;
+&lt;REQUIRED_KEY_SPEC&gt; = {
+    &quot;value_schema&quot;: &lt;SCHEMA&gt;
+}
+
+&lt;OPTIONAL_KEY_SPEC&gt; = {
+    &quot;value_schema&quot;: &lt;SCHEMA&gt;,
+    [&quot;default&quot;: &lt;VALUE&gt;]
 }
 
 &lt;LIST_SCHEMA&gt; = {
     &quot;type&quot;: &quot;list&quot;,
-    &quot;schema&quot;: &lt;SCHEMA&gt;
+    &quot;element_schema&quot;: &lt;SCHEMA&gt;,
+    [&quot;nullable&quot;: (True | False)]
 }
 
-&lt;LEAF_SCHEMA&gt; = {
-    &quot;type&quot;: (&quot;string&quot; | &quot;integer&quot; | &quot;float&quot; | &quot;boolean&quot; | &quot;datetime&quot;)
+LEAF_SCHEMA = {
+    &quot;type&quot;: (&quot;string&quot; | &quot;integer&quot; | &quot;float&quot; | &quot;boolean&quot; | &quot;date&quot; | &quot;datetime&quot;),
+    [&quot;nullable&quot;: (True | False)]
 }
 
 &lt;ANY_SCHEMA&gt; = {
@@ -229,31 +236,35 @@ configuration tree.  The “grammar” of a schema is roughly as follows:</p>
 }
 </pre></div>
 </div>
-<p>A type of “any” denotes that the configuration option will be left as-is with no parsing,
-however, interpolation still takes place.</p>
-<p>Optionally, a leaf value can be “nullable”, meaning that <cite>None</cite> is a valid type. By default,
-the leaf values are not nullable.</p>
-<p>This grammar is a subset of that defined by the <a class="reference external" href="https://docs.python-cerberus.org/en/stable/">Cerberus</a> dict validator.
-Therefore, <cite>dictconfig</cite> schemas can be parsed by Cerberus.</p>
+<p>A type of “any” denotes that the configuration option will be left as-is with
+no parsing, however, interpolation still takes place.</p>
+<p>Optionally, a leaf value can be “nullable”, meaning that <cite>None</cite> is a valid
+type. By default, the leaf values are not nullable.</p>
 <p>Here is an example of a valid schema for the configuration dictionary from
 the start of this section:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>{
-    &#39;type&#39;: &#39;dict&#39;,
-    &#39;schema&#39;: {
-        &#39;title&#39;: {&#39;type&#39;: &#39;string&#39;},
-        &#39;release&#39;: {
-            &#39;type&#39;: &#39;dict&#39;,
-            &#39;schema&#39;: {
-                &#39;date&#39;: &#39;date&#39;,
-                &#39;via&#39;: &#39;string&#39;
-            }
-        },
-        &#39;authors&#39;: {
-            &#39;type&#39;: &#39;list&#39;,
-            &#39;schema&#39;: {&#39;type&#39;: &#39;string&#39;}
-        }
-    }
-}
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;dict&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;required_keys&#39;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s1">&#39;title&#39;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s1">&#39;value_schema&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;string&#39;</span><span class="p">},</span>
+        <span class="p">},</span>
+        <span class="s1">&#39;release&#39;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s1">&#39;value_schema&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;dict&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;required_keys&#39;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s1">&#39;date&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;value_schema&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;date&#39;</span><span class="p">}},</span>
+                    <span class="s1">&#39;via&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;value_schema&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;string&#39;</span><span class="p">}},</span>
+                <span class="p">}</span>
+            <span class="p">},</span>
+        <span class="p">},</span>
+        <span class="s1">&#39;authors&#39;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s1">&#39;value_schema&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;list&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;element_schema&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;string&#39;</span><span class="p">}</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
 </pre></div>
 </div>
 </section>
@@ -262,7 +273,7 @@ the start of this section:</p>
 <p>Resolving a configuration is done via the <a class="reference internal" href="#dictconfig.resolve" title="dictconfig.resolve"><code class="xref py py-func docutils literal notranslate"><span class="pre">dictconfig.resolve()</span></code></a> function:</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="dictconfig.resolve">
-<span class="sig-prename descclassname"><span class="pre">dictconfig.</span></span><span class="sig-name descname"><span class="pre">resolve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">raw_cfg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">external_variables</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">override_parsers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dictconfig.resolve" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">dictconfig.</span></span><span class="sig-name descname"><span class="pre">resolve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">raw_cfg</span></em>, <em class="sig-param"><span class="pre">schema</span></em>, <em class="sig-param"><span class="pre">external_variables=None</span></em>, <em class="sig-param"><span class="pre">override_parsers=None</span></em>, <em class="sig-param"><span class="pre">schema_validator=&lt;function</span> <span class="pre">validate_schema&gt;</span></em><span class="sig-paren">)</span><a class="headerlink" href="#dictconfig.resolve" title="Permalink to this definition"></a></dt>
 <dd><p>Resolve a raw configuration by interpolating and parsing its entries.</p>
 <p>The raw configuration can be a dictionary, list, or a non-container type;
 resolution will be done recursively. In any case, the provided schema must
@@ -281,6 +292,9 @@ the configuration. For example, <code class="code docutils literal notranslate">
 should take the raw value (after interpolation) and convert it to the specified
 type. If this is not provided, the default parsers are used.</p></li>
 </ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>SchemaError</strong> – If the schema is not valid.</p>
 </dd>
 </dl>
 </dd></dl>

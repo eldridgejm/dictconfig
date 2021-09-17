@@ -9,17 +9,21 @@ A straightforward way of configuring a piece of Python software is to read
 configuration settings from a file (usually JSON or YAML) into a Python
 dictionary. While this is convenient, this approach has some limitations;
 namely, fields within a JSON or YAML file cannot make use of variables, nor can
-they reference one another.
+they reference one another. Furthermore, it's often desirable to perform some
+basic validation of the configuration settings to ensure that all of the
+required values are provided and to fill in missing values with suitable
+defaults.
 
-`dictconfig` is a Python package that aims to ease these limitations by
-supporting:
+`dictconfig` is a Python package that aims to support this use case. It provides
+the following features:
 
-1. **External Variables**: Configuration values can reference external
-   variables supplied by the program reading the configuration.
-2. **Internal References**: The configuration can reference other settings
-   within the same configuration.
-3. **Domain-specific languages**: Custom parsers can be provided to convert
-   configuration options to Python types in a domain-specific way. `dateconfig`
+1. **Basic Validation**: Check that require values are provided and fill in
+   missing optional values with defaults.
+2. **Interpolation** Configuration values can reference other parts of the configuration,
+   or even external variables supplied by the program reading the
+   configuration.
+3. **Domain-specific Parsing**: Custom parsers can be provided to convert
+   configuration options to Python types in a domain-specific way. `dictconfig`
    comes with parsers for interpreting arithmetic expressions (e.g., `"(4 + 6) / 2"`),
    logical expressions (e.g., `"True and (False or True)"`), and relative datetimes
    (e.g., `"7 days after 2021-10-10"`).
@@ -59,18 +63,18 @@ and `due` are dates:
 
     schema = {
         "type": "dict",
-        "schema": {
-            "x": {"type": "integer"},
-            "y": {"type": "integer"},
-            "z": {"type": "integer"},
-            "released": {"type": "date"},
-            "due": {"type": "date"}
+        "required_keys": {
+            "x": {"value_schema": {"type": "integer"}},
+            "y": {"value_schema": {"type": "integer"}},
+            "z": {"value_schema": {"type": "integer"}},
+            "released": {"value_schema": {"type": "date"}},
+            "due": {"value_schema": {"type": "date"},
         }
     }
 
-As can be seen from above, a schema is a nested dictionary describing the expected
-types of configuration values. For a more precise definition of a schema, see the
-`Schemata`_ section below.
+As can be seen from above, a schema is a nested dictionary describing which
+configuration keys are required and what their types should be. For a more
+precise definition of a schema, see the `Schemata`_ section below.
 
 Next, we call :code:`dictconfig.resolve()` to *resolve* the configuration. We provide
 a dictionary of external variables that can be resolved.
@@ -149,63 +153,70 @@ configuration tree.  The "grammar" of a schema is roughly as follows:
 
     <SCHEMA> = (<DICT_SCHEMA> | <LIST_SCHEMA> | <LEAF_SCHEMA> | <ANY_SCHEMA>)
 
-    <DICT_SCHEMA> = <DICT_SCHEMA_BY_KEY> | <DICT_SCHEMA_FOR_ALL_KEYS>
-
-    <DICT_SCHEMA_BY_KEY> = {
+    <DICT_SCHEMA> = {
         "type": "dict",
-        schema = {
-            key_1: <SCHEMA>,
-            [key_2: <SCHEMA>,]
-            [key_3: <SCHEMA>,]
-        }
+        ["required_keys": {<KEY_NAME>: <REQUIRED_KEY_SPEC>, ...}],
+        ["optional_keys": {<KEY_NAME>: <OPTIONAL_KEY_SPEC>, ...}],
+        ["extra_keys_schema": <SCHEMA>],
+        ["nullable": (True | False)],
     }
 
-    <DICT_SCHEMA_FOR_ALL_KEYS> = {
-        "type": "dict",
-        "valuesrules" = <SCHEMA>
+    <REQUIRED_KEY_SPEC> = {
+        "value_schema": <SCHEMA>
+    }
+
+    <OPTIONAL_KEY_SPEC> = {
+        "value_schema": <SCHEMA>,
+        ["default": <VALUE>]
     }
 
     <LIST_SCHEMA> = {
         "type": "list",
-        "schema": <SCHEMA>
+        "element_schema": <SCHEMA>,
+        ["nullable": (True | False)]
     }
 
-    <LEAF_SCHEMA> = {
-        "type": ("string" | "integer" | "float" | "boolean" | "datetime")
+    LEAF_SCHEMA = {
+        "type": ("string" | "integer" | "float" | "boolean" | "date" | "datetime"),
+        ["nullable": (True | False)]
     }
 
     <ANY_SCHEMA> = {
         "type": "any"
     }
 
-A type of "any" denotes that the configuration option will be left as-is with no parsing,
-however, interpolation still takes place.
 
-Optionally, a leaf value can be "nullable", meaning that `None` is a valid type. By default,
-the leaf values are not nullable.
+A type of "any" denotes that the configuration option will be left as-is with
+no parsing, however, interpolation still takes place.
 
-This grammar is a subset of that defined by the `Cerberus <https://docs.python-cerberus.org/en/stable/>`_ dict validator.
-Therefore, `dictconfig` schemas can be parsed by Cerberus.
+Optionally, a leaf value can be "nullable", meaning that `None` is a valid
+type. By default, the leaf values are not nullable.
 
 Here is an example of a valid schema for the configuration dictionary from
 the start of this section:
 
-.. code:: text
+.. code:: python
 
     {
         'type': 'dict',
-        'schema': {
-            'title': {'type': 'string'},
+        'required_keys': {
+            'title': {
+                'value_schema': {'type': 'string'},
+            },
             'release': {
-                'type': 'dict',
-                'schema': {
-                    'date': 'date',
-                    'via': 'string'
-                }
+                'value_schema': {
+                    'type': 'dict',
+                    'required_keys': {
+                        'date': {'value_schema': {'type': 'date'}},
+                        'via': {'value_schema': {'type': 'string'}},
+                    }
+                },
             },
             'authors': {
-                'type': 'list',
-                'schema': {'type': 'string'}
+                'value_schema': {
+                    'type': 'list',
+                    'element_schema': {'type': 'string'}
+                }
             }
         }
     }
