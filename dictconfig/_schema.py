@@ -31,7 +31,7 @@ The "grammar" of an dictconfig schema is as follows:
     }
 
     <LEAF_SCHEMA> = {
-        "type": ("string" | "integer" | "float" | "boolean" | "datetime")
+        "type": ("string" | "integer" | "float" | "boolean" | "datetime" | "any")
     }
 
 

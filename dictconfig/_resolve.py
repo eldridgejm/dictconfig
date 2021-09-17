@@ -36,6 +36,7 @@ DEFAULT_PARSERS = {
     "boolean": _parsers.logic,
     "date": _parsers.smartdate,
     "datetime": _parsers.smartdatetime,
+    "any": lambda x: x,
 }
 
 
@@ -262,7 +263,7 @@ class _DictNode:
                 try:
                     child_schema = dict_schema["schema"][dct_key]
                 except KeyError:
-                    child_schema = {"type": "string"}
+                    child_schema = {"type": "any"}
 
             args = (dct_value, child_schema)
 

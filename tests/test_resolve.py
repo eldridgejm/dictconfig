@@ -141,6 +141,45 @@ def test_with_list():
     assert result["bar"] == "something"
 
 
+def test_providing_no_schema_preserves_leaf_node_type():
+    # that is, does not cast internal nodes to strings
+
+    # given
+    schema = {
+        "type": "dict",
+        "schema": {},
+    }
+
+    dct = {"foo": 42}
+
+    # when
+    result = resolve(dct, schema)
+
+    # then
+    assert result["foo"] == 42
+
+
+def test_providing_no_schema_preserves_internal_node_type():
+    # that is, does not cast internal nodes to strings
+
+    # given
+    schema = {
+        "type": "dict",
+        "schema": {"foo": {"type": "string"},},
+    }
+
+    dct = {
+        "foo": "hello",
+        "bar": [1, 2, 3],
+    }
+
+    # when
+    result = resolve(dct, schema)
+
+    # then
+    assert result["bar"] == [1, 2, 3]
+
+
 def test_with_multiple_redirections():
     # given
     schema = {

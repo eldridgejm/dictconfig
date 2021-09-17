@@ -171,9 +171,11 @@ configuration tree.  The "grammar" of a schema is roughly as follows:
     }
 
     <LEAF_SCHEMA> = {
-        "type": ("string" | "integer" | "float" | "boolean" | "datetime")
+        "type": ("string" | "integer" | "float" | "boolean" | "datetime" | "any")
     }
 
+A leaf type of "any" denotes that the raw leaf value will be left as-is, and will not be
+parsed.
 
 Optionally, a leaf value can be "nullable", meaning that `None` is a valid type. By default,
 the leaf values are not nullable.
