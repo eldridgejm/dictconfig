@@ -19,10 +19,7 @@ def test_raises_if_required_keys_are_missing():
     # given
     schema = {
         "type": "dict",
-        "required_keys": {
-            "foo": {"value_schema": {"type": "any"}},
-            "bar": {"value_schema": {"type": "any"}},
-        },
+        "required_keys": {"foo": {"type": "any"}, "bar": {"type": "any"},},
     }
 
     dct = {"foo": 42}
@@ -62,7 +59,7 @@ def test_fills_in_missing_value_with_default_if_provided():
     # given
     schema = {
         "type": "dict",
-        "optional_keys": {"foo": {"default": 42, "value_schema": {"type": "integer"}}},
+        "optional_keys": {"foo": {"default": 42, "type": "integer"}},
     }
 
     dct = {}
@@ -78,10 +75,7 @@ def test_allows_missing_keys_if_required_is_false():
     # given
     schema = {
         "type": "dict",
-        "optional_keys": {
-            "foo": {"value_schema": {"type": "integer"}},
-            "bar": {"value_schema": {"type": "integer"},},
-        },
+        "optional_keys": {"foo": {"type": "integer"}, "bar": {"type": "integer",},},
     }
 
     dct = {"bar": 42}
@@ -134,10 +128,7 @@ def test_interpolation_of_other_dictionary_entries_same_level():
     # given
     schema = {
         "type": "dict",
-        "required_keys": {
-            "foo": {"value_schema": {"type": "string"}},
-            "bar": {"value_schema": {"type": "string"}},
-        },
+        "required_keys": {"foo": {"type": "string"}, "bar": {"type": "string"},},
     }
 
     dct = {"foo": "this", "bar": "testing ${self.foo}"}
@@ -154,13 +145,8 @@ def test_interpolation_of_other_dictionary_entries_different_level():
     schema = {
         "type": "dict",
         "required_keys": {
-            "foo": {"value_schema": {"type": "string"}},
-            "bar": {
-                "value_schema": {
-                    "type": "dict",
-                    "required_keys": {"baz": {"value_schema": {"type": "string"}}},
-                }
-            },
+            "foo": {"type": "string"},
+            "bar": {"type": "dict", "required_keys": {"baz": {"type": "string"}},},
         },
     }
 
@@ -178,10 +164,8 @@ def test_interpolation_can_reference_list_elements():
     schema = {
         "type": "dict",
         "required_keys": {
-            "foo": {"value_schema": {"type": "string"}},
-            "bar": {
-                "value_schema": {"type": "list", "element_schema": {"type": "string"}},
-            },
+            "foo": {"type": "string"},
+            "bar": {"type": "list", "element_schema": {"type": "string"},},
         },
     }
 
@@ -198,7 +182,7 @@ def test_interpolation_can_use_external_variables():
     # given
     schema = {
         "type": "dict",
-        "required_keys": {"foo": {"value_schema": {"type": "string"}},},
+        "required_keys": {"foo": {"type": "string"},},
     }
 
     dct = {"foo": "testing ${a.b.c}"}
@@ -216,9 +200,9 @@ def test_chain_of_multiple_interpolations():
     schema = {
         "type": "dict",
         "required_keys": {
-            "foo": {"value_schema": {"type": "string"}},
-            "bar": {"value_schema": {"type": "string"}},
-            "baz": {"value_schema": {"type": "string"}},
+            "foo": {"type": "string"},
+            "bar": {"type": "string"},
+            "baz": {"type": "string"},
         },
     }
 
@@ -241,7 +225,7 @@ def test_raises_if_self_reference_detected():
     # given
     schema = {
         "type": "dict",
-        "required_keys": {"foo": {"value_schema": {"type": "string"}},},
+        "required_keys": {"foo": {"type": "string"},},
     }
 
     dct = {
@@ -258,9 +242,9 @@ def test_raises_if_cyclical_reference_detected():
     schema = {
         "type": "dict",
         "required_keys": {
-            "foo": {"value_schema": {"type": "string"}},
-            "bar": {"value_schema": {"type": "string"}},
-            "baz": {"value_schema": {"type": "string"}},
+            "foo": {"type": "string"},
+            "bar": {"type": "string"},
+            "baz": {"type": "string"},
         },
     }
 
@@ -283,7 +267,7 @@ def test_leafs_are_parsed_into_expected_types():
     # given
     schema = {
         "type": "dict",
-        "required_keys": {"foo": {"value_schema": {"type": "integer"}}},
+        "required_keys": {"foo": {"type": "integer"}},
     }
 
     dct = {"foo": "42"}
@@ -299,10 +283,7 @@ def test_parsing_occurs_after_interpolation():
     # given
     schema = {
         "type": "dict",
-        "required_keys": {
-            "foo": {"value_schema": {"type": "integer"}},
-            "bar": {"value_schema": {"type": "integer"}},
-        },
+        "required_keys": {"foo": {"type": "integer"}, "bar": {"type": "integer"},},
     }
 
     dct = {"foo": "42", "bar": "${self.foo}"}
@@ -384,7 +365,7 @@ def test_dictionary_can_be_nullable():
     # given
     schema = {
         "type": "dict",
-        "required_keys": {"foo": {"value_schema": {"type": "dict", "nullable": True}}},
+        "required_keys": {"foo": {"type": "dict", "nullable": True}},
     }
 
     dct = {"foo": None}
@@ -402,11 +383,9 @@ def test_list_can_be_nullable():
         "type": "dict",
         "required_keys": {
             "foo": {
-                "value_schema": {
-                    "type": "list",
-                    "element_schema": {"type": "any"},
-                    "nullable": True,
-                }
+                "type": "list",
+                "element_schema": {"type": "any"},
+                "nullable": True,
             }
         },
     }
@@ -424,9 +403,7 @@ def test_leaf_can_be_nullable():
     # given
     schema = {
         "type": "dict",
-        "required_keys": {
-            "foo": {"value_schema": {"type": "integer", "nullable": True}}
-        },
+        "required_keys": {"foo": {"type": "integer", "nullable": True}},
     }
 
     dct = {"foo": None}
@@ -447,12 +424,7 @@ def test_exception_has_correct_path_with_missing_key_in_nested_dict():
     schema = {
         "type": "dict",
         "required_keys": {
-            "foo": {
-                "value_schema": {
-                    "type": "dict",
-                    "required_keys": {"bar": {"value_schema": {"type": "any"}}},
-                }
-            },
+            "foo": {"type": "dict", "required_keys": {"bar": {"type": "any"}},},
         },
     }
 
@@ -471,7 +443,7 @@ def test_exception_has_correct_path_with_missing_key_in_nested_dict_within_list(
         "type": "list",
         "element_schema": {
             "type": "dict",
-            "required_keys": {"foo": {"value_schema": {"type": "integer",}},},
+            "required_keys": {"foo": {"type": "integer",},},
         },
     }
 

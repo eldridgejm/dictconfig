@@ -223,32 +223,30 @@ class _DictNode:
 def _handle_required_keys(children, dct, dict_schema, path):
     required_keys = dict_schema.get("required_keys", {})
 
-    for key, key_spec in required_keys.items():
+    for key, key_schema in required_keys.items():
         if key not in dct:
             raise exceptions.MissingKeyError(path + (key,))
 
         children[key] = _build_configuration_tree_node(
-            dct[key], key_spec["value_schema"], path + (key,)
+            dct[key], key_schema, path + (key,)
         )
 
 
 def _handle_optional_keys(children, dct, dict_schema, path):
     optional_keys = dict_schema.get("optional_keys", {})
 
-    for key, key_spec in optional_keys.items():
+    for key, key_schema in optional_keys.items():
         if key in dct:
             # key is not missing
             value = dct[key]
-        elif "default" in key_spec:
+        elif "default" in key_schema:
             # key is missing and default was provided
-            value = key_spec["default"]
+            value = key_schema["default"]
         else:
             # key is missing and no default was provided
             continue
 
-        children[key] = _build_configuration_tree_node(
-            value, key_spec["value_schema"], path + (key,)
-        )
+        children[key] = _build_configuration_tree_node(value, key_schema, path + (key,))
 
 
 def _handle_extra_keys(children, dct, dict_schema, path):
@@ -491,16 +489,17 @@ def _get_path(dct, exploded_path):
 # ----------
 
 
-def _validate_schema(schema):
-
-    _validate_general_schema(schema)
+def _validate_schema(schema, with_default=False):
+    _validate_general_schema(schema, with_default=with_default)
 
     if schema["type"] == "dict":
-        _validate_dict_schema(schema)
+        _validate_dict_schema(schema, with_default)
     elif schema["type"] == "list":
-        _validate_list_schema(schema)
+        _validate_list_schema(schema, with_default)
     elif schema["type"] == "any":
-        _validate_any_schema(schema)
+        _validate_any_schema(schema, with_default)
+    else:
+        _validate_leaf_schema(schema, with_default)
 
 
 def _try_to_resolve_without_validating(schema, schema_schema):
@@ -510,28 +509,52 @@ def _try_to_resolve_without_validating(schema, schema_schema):
     return resolve(schema, schema_schema, schema_validator=nop)
 
 
-def _validate_general_schema(schema):
+def _add_default_to_optional_keys(schema_schema):
+    schema_schema['optional_keys']['default'] = {
+            'type': 'any',
+            'nullable': True
+    }
+
+def _validate_general_schema(schema, with_default):
     schema_schema = {
         "type": "dict",
-        "required_keys": {"type": {"value_schema": {"type": "string"}}},
-        "optional_keys": {"nullable": {"value_schema": {"type": "boolean"},}},
+        "required_keys": {"type": {"type": "string"}},
+        "optional_keys": {"nullable": {"type": "boolean",}},
         "extra_keys_schema": {"type": "any"},
     }
+
+    if with_default:
+        _add_default_to_optional_keys(schema_schema)
 
     _try_to_resolve_without_validating(schema, schema_schema)
 
 
-def _validate_dict_schema(dict_schema):
+def _validate_leaf_schema(leaf_schema, with_default):
+    leaf_schema_schema = {
+        "type": "dict",
+        "required_keys": {"type": {"type": "string"}},
+        "optional_keys": {"nullable": {"type": "boolean"}}
+    }
+
+    if with_default:
+        _add_default_to_optional_keys(leaf_schema_schema)
+
+    _try_to_resolve_without_validating(leaf_schema, leaf_schema_schema)
+
+def _validate_dict_schema(dict_schema, with_default):
     dict_schema_schema = {
         "type": "dict",
-        "required_keys": {"type": {"value_schema": {"type": "string"}}},
+        "required_keys": {"type": {"type": "string"}},
         "optional_keys": {
-            "required_keys": {"value_schema": {"type": "any"}},
-            "optional_keys": {"value_schema": {"type": "any"}},
-            "extra_keys_schema": {"value_schema": {"type": "any"}},
-            "nullable": {"value_schema": {"type": "boolean"},},
+            "required_keys": {"type": "any"},
+            "optional_keys": {"type": "any"},
+            "extra_keys_schema": {"type": "any"},
+            "nullable": {"type": "boolean",},
         },
     }
+
+    if with_default:
+        _add_default_to_optional_keys(dict_schema_schema)
 
     _try_to_resolve_without_validating(dict_schema, dict_schema_schema)
 
@@ -549,47 +572,42 @@ def _validate_dict_schema(dict_schema):
 
 
 def _validate_required_key_spec(key_spec):
-    key_spec_schema = {
-        "type": "dict",
-        "required_keys": {"value_schema": {"value_schema": {"type": "any"}}},
-    }
+    if 'default' in key_spec:
+        raise exceptions.SchemaError('Required key cannot list default.', ())
 
-    _try_to_resolve_without_validating(key_spec, key_spec_schema)
-    _validate_schema(key_spec["value_schema"])
+    _validate_schema(key_spec)
 
 
 def _validate_optional_key_spec(key_spec):
-    key_spec_schema = {
-        "type": "dict",
-        "required_keys": {"value_schema": {"value_schema": {"type": "any"}}},
-        "optional_keys": {
-            "default": {"value_schema": {"type": "any", "nullable": True},}
-        },
-    }
-
-    _try_to_resolve_without_validating(key_spec, key_spec_schema)
-    _validate_schema(key_spec["value_schema"])
+    _validate_schema(key_spec, with_default=True)
 
 
-def _validate_list_schema(list_schema):
+def _validate_list_schema(list_schema, with_default):
     list_schema_schema = {
         "type": "dict",
         "required_keys": {
-            "type": {"value_schema": {"type": "string"}},
-            "element_schema": {"value_schema": {"type": "any"}},
+            "type": {"type": "string"},
+            "element_schema": {"type": "any"},
         },
-        "optional_keys": {"nullable": {"value_schema": {"type": "boolean"},}},
+        "optional_keys": {"nullable": {"type": "boolean",}},
     }
+
+    if with_default:
+        _add_default_to_optional_keys(list_schema_schema)
 
     _try_to_resolve_without_validating(list_schema, list_schema_schema)
     _validate_schema(list_schema["element_schema"])
 
 
-def _validate_any_schema(any_schema):
+def _validate_any_schema(any_schema, with_default):
     any_schema_schema = {
         "type": "dict",
-        "required_keys": {"type": {"value_schema": {"type": "string"}}},
-        "optional_keys": {"nullable": {"value_schema": {"type": "boolean"},}},
+        "required_keys": {"type": {"type": "string"}},
+        "optional_keys": {"nullable": {"type": "boolean",}},
     }
+
+    if with_default:
+        _add_default_to_optional_keys(any_schema_schema)
+
 
     _try_to_resolve_without_validating(any_schema, any_schema_schema)
