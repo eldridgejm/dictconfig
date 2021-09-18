@@ -25,10 +25,10 @@ def test_raises_if_required_keys_are_missing():
     dct = {"foo": 42}
 
     # when
-    with raises(exceptions.MissingKeyError) as excinfo:
+    with raises(exceptions.ResolutionError) as excinfo:
         resolve(dct, schema)
 
-    assert excinfo.value.path == ("bar",)
+    assert excinfo.value.keypath == ("bar",)
 
 
 def test_raises_if_extra_keys_without_extra_keys_schema():
@@ -38,7 +38,7 @@ def test_raises_if_extra_keys_without_extra_keys_schema():
     dct = {"foo": 42}
 
     # when
-    with raises(exceptions.ExtraKeyError):
+    with raises(exceptions.ResolutionError):
         resolve(dct, schema)
 
 
@@ -431,10 +431,10 @@ def test_exception_has_correct_path_with_missing_key_in_nested_dict():
     dct = {"foo": {}}
 
     # when
-    with raises(exceptions.MissingKeyError) as excinfo:
+    with raises(exceptions.ResolutionError) as excinfo:
         resolve(dct, schema)
 
-    assert excinfo.value.path == ("foo", "bar",)
+    assert excinfo.value.keypath == ("foo", "bar",)
 
 
 def test_exception_has_correct_path_with_missing_key_in_nested_dict_within_list():
@@ -450,7 +450,7 @@ def test_exception_has_correct_path_with_missing_key_in_nested_dict_within_list(
     lst = [{"foo": 10,}, {"bar": 42}]
 
     # when
-    with raises(exceptions.MissingKeyError) as excinfo:
+    with raises(exceptions.ResolutionError) as excinfo:
         resolve(lst, schema)
 
-    assert excinfo.value.path == (1, "foo")
+    assert excinfo.value.keypath == (1, "foo")

@@ -44,14 +44,11 @@ def validate_schema(schema):
 
     Raises
     ------
-    SchemaError
+    InvalidSchemaError
         If the schema is not valid.
 
     """
-    try:
-        _validate_schema(schema)
-    except exceptions.ResolutionError as exc:
-        raise exceptions.SchemaError(exc)
+    _validate_schema(schema)
 
 
 def resolve(
@@ -76,7 +73,7 @@ def resolve(
         The schema describing the types in the raw configuration.
     external_variables
         A (nested) dictionary of external variables that may be interpolated into
-        the raw configuration. External variables can be referred to by dotted paths in
+        the raw configuration. External variables can be referred to by dotted keypaths in
         the configuration. For example, :code:`${foo.bar.baz}` will reference the value
         42 in the dictionary :code:`{'foo': {'bar': {'baz': 42}}}`.
     override_parsers
@@ -86,7 +83,7 @@ def resolve(
 
     Raises
     ------
-    SchemaError
+    InvalidSchemaError
         If the schema is not valid.
 
     """
@@ -133,7 +130,7 @@ def _update_parsers(overrides):
 #       nodes.
 
 
-def _build_configuration_tree_node(raw_cfg, schema, path=tuple()):
+def _build_configuration_tree_node(raw_cfg, schema, keypath=tuple()):
     """Recursively constructs a configuration tree from a raw configuration.
 
     The raw configuration can be a dictionary, list, or a non-container type. In any
@@ -155,10 +152,9 @@ def _build_configuration_tree_node(raw_cfg, schema, path=tuple()):
     """
     if raw_cfg is None:
         if "nullable" in schema and schema["nullable"]:
-            return _LeafNode.from_raw(None, {"type": "any"}, path)
+            return _LeafNode.from_raw(None, {"type": "any"}, keypath)
         else:
-            dotted = ".".join(path)
-            raise exceptions.ResolutionError(f"{dotted} is unexpectedly null.")
+            raise exceptions.ResolutionError("Unexpectedly null.", keypath)
 
     # construct the configuration tree
     # the configuration tree is a nested container whose terminal leaf values
@@ -169,16 +165,16 @@ def _build_configuration_tree_node(raw_cfg, schema, path=tuple()):
                 "type": "dict",
                 "extra_keys_schema": {"type": "any", "nullable": True},
             }
-        return _DictNode.from_raw(raw_cfg, schema, path)
+        return _DictNode.from_raw(raw_cfg, schema, keypath)
     elif isinstance(raw_cfg, list):
         if schema["type"] == "any":
             schema = {
                 "type": "list",
                 "element_schema": {"type": "any", "nullable": True},
             }
-        return _ListNode.from_raw(raw_cfg, schema, path)
+        return _ListNode.from_raw(raw_cfg, schema, keypath)
     else:
-        return _LeafNode.from_raw(raw_cfg, schema, path)
+        return _LeafNode.from_raw(raw_cfg, schema, keypath)
 
 
 # denotes that a node is currently being resolved
@@ -202,13 +198,13 @@ class _DictNode:
         self.children = children
 
     @classmethod
-    def from_raw(cls, dct, dict_schema, path):
+    def from_raw(cls, dct, dict_schema, keypath):
         """Construct a _DictNode from a raw configuration dictionary and its schema."""
         children = {}
 
-        _handle_required_keys(children, dct, dict_schema, path)
-        _handle_optional_keys(children, dct, dict_schema, path)
-        _handle_extra_keys(children, dct, dict_schema, path)
+        _handle_required_keys(children, dct, dict_schema, keypath)
+        _handle_optional_keys(children, dct, dict_schema, keypath)
+        _handle_extra_keys(children, dct, dict_schema, keypath)
 
         return cls(children)
 
@@ -220,19 +216,19 @@ class _DictNode:
         return {key: child.resolve(resolver) for key, child in self.children.items()}
 
 
-def _handle_required_keys(children, dct, dict_schema, path):
+def _handle_required_keys(children, dct, dict_schema, keypath):
     required_keys = dict_schema.get("required_keys", {})
 
     for key, key_schema in required_keys.items():
         if key not in dct:
-            raise exceptions.MissingKeyError(path + (key,))
+            raise exceptions.ResolutionError("Missing required key.", (keypath + (key,)))
 
         children[key] = _build_configuration_tree_node(
-            dct[key], key_schema, path + (key,)
+            dct[key], key_schema, keypath + (key,)
         )
 
 
-def _handle_optional_keys(children, dct, dict_schema, path):
+def _handle_optional_keys(children, dct, dict_schema, keypath):
     optional_keys = dict_schema.get("optional_keys", {})
 
     for key, key_schema in optional_keys.items():
@@ -246,24 +242,23 @@ def _handle_optional_keys(children, dct, dict_schema, path):
             # key is missing and no default was provided
             continue
 
-        children[key] = _build_configuration_tree_node(value, key_schema, path + (key,))
+        children[key] = _build_configuration_tree_node(value, key_schema, keypath + (key,))
 
 
-def _handle_extra_keys(children, dct, dict_schema, path):
+def _handle_extra_keys(children, dct, dict_schema, keypath):
     required_keys = dict_schema.get("required_keys", {})
     optional_keys = dict_schema.get("optional_keys", {})
     expected_keys = set(required_keys) | set(optional_keys)
     extra_keys = dct.keys() - expected_keys
 
     if extra_keys and "extra_keys_schema" not in dict_schema:
-        dotted = ".".join(path)
-        raise exceptions.ExtraKeyError(
-            f"Unexpected extra keys in {dotted}: {extra_keys}"
+        raise exceptions.ResolutionError(
+            f"Unexpected extra key.", keypath + (extra_keys.pop(),)
         )
 
     for key in extra_keys:
         children[key] = _build_configuration_tree_node(
-            dct[key], dict_schema["extra_keys_schema"], path + (key,)
+            dct[key], dict_schema["extra_keys_schema"], keypath + (key,)
         )
 
 
@@ -281,13 +276,13 @@ class _ListNode:
         self.children = children
 
     @classmethod
-    def from_raw(cls, lst, list_schema, path):
+    def from_raw(cls, lst, list_schema, keypath):
         """Make an internal list node from a raw list and recurse on the children."""
         child_schema = list_schema["element_schema"]
 
         children = []
         for i, lst_value in enumerate(lst):
-            r = _build_configuration_tree_node(lst_value, child_schema, path + (i,))
+            r = _build_configuration_tree_node(lst_value, child_schema, keypath + (i,))
             children.append(r)
 
         return cls(children)
@@ -329,7 +324,7 @@ class _LeafNode:
         self._resolved = _UNDISCOVERED
 
     @classmethod
-    def from_raw(cls, raw, leaf_schema, path, nullable=False):
+    def from_raw(cls, raw, leaf_schema, keypath, nullable=False):
         """Create a leaf node from the raw configuration and schema."""
         return cls(raw, leaf_schema["type"], nullable)
 
@@ -372,7 +367,7 @@ class _LeafNode:
         """
 
         if self._resolved is _PENDING:
-            raise exceptions.ResolutionError("Circular reference")
+            raise exceptions.ResolutionError("Circular reference", "")
 
         if self._resolved is not _UNDISCOVERED:
             return self._resolved
@@ -406,14 +401,14 @@ class _Resolver:
         self.parsers = parsers
 
     def interpolate(self, s, reference_path):
-        """Replace a reference path with its resolved value.
+        """Replace a reference keypath with its resolved value.
 
         Parameters
         ----------
         s : str
             A configuration string with references to other values.
         reference_path : str
-            The reference path that will be resolved and replaced.
+            The reference keypath that will be resolved and replaced.
 
         Returns
         -------
@@ -434,8 +429,8 @@ class _Resolver:
         try:
             referred_leaf_node = _get_path(self.root, exploded_path[1:])
         except KeyError:
-            path = "${" + ".".join(exploded_path) + "}"
-            raise exceptions.ResolutionError(f"Cannot resolve {path}")
+            keypath = "${" + ".".join(exploded_path) + "}"
+            raise exceptions.ResolutionError(f"Cannot resolve {keypath}")
 
         return referred_leaf_node.resolve(self)
 
@@ -452,7 +447,7 @@ class _Resolver:
         try:
             parser = self.parsers[type_]
         except KeyError:
-            raise exceptions.ResolutionError(f'No parser for type "{type_}".')
+            raise exceptions.ResolutionError(f'No parser for type "{type_}".', "")
 
         return parser(s)
 
@@ -461,10 +456,10 @@ class _Resolver:
 # -------
 
 
-def _explode_dotted_path_string(path):
-    """Takes a dotted path string like foo.bar.baz and returns a tuple of parts.
+def _explode_dotted_path_string(keypath):
+    """Takes a dotted keypath string like foo.bar.baz and returns a tuple of parts.
 
-    If a path component is a number, the corresponding part is an integer.
+    If a keypath component is a number, the corresponding part is an integer.
 
     """
 
@@ -474,12 +469,12 @@ def _explode_dotted_path_string(path):
         else:
             return c
 
-    components = path.split(".")
+    components = keypath.split(".")
     return tuple(_parse_path_component(c) for c in components)
 
 
 def _get_path(dct, exploded_path):
-    """Retrieve a dictionary entry using an exploded path."""
+    """Retrieve a dictionary entry using an exploded keypath."""
     if len(exploded_path) == 1:
         return dct[exploded_path[0]]
     return _get_path(dct[exploded_path[0]], exploded_path[1:])
@@ -489,125 +484,85 @@ def _get_path(dct, exploded_path):
 # ----------
 
 
-def _validate_schema(schema, with_default=False):
-    _validate_general_schema(schema, with_default=with_default)
+def _validate_schema(schema, keypath=tuple(), allow_default=False):
+    if not isinstance(schema, dict):
+        raise exceptions.InvalidSchemaError("Schema must be a dict.", keypath)
+
+    if "type" not in schema:
+        raise exceptions.InvalidSchemaError('Required key missing.', keypath + (type,))
+
+    args = (schema, keypath, allow_default)
 
     if schema["type"] == "dict":
-        _validate_dict_schema(schema, with_default)
+        _validate_dict_schema(*args)
     elif schema["type"] == "list":
-        _validate_list_schema(schema, with_default)
-    elif schema["type"] == "any":
-        _validate_any_schema(schema, with_default)
+        _validate_list_schema(*args)
     else:
-        _validate_leaf_schema(schema, with_default)
+        _validate_leaf_schema(*args)
 
 
-def _try_to_resolve_without_validating(schema, schema_schema):
-    def nop(s):
-        return
+def _check_keys(provided, required, optional, keypath, allow_default):
+    allowed = required | optional
+    if allow_default:
+        allowed.add('default')
 
-    return resolve(schema, schema_schema, schema_validator=nop)
+    extra = provided - allowed
+    missing = required - provided
 
+    if extra:
+        exemplar = extra.pop()
+        raise exceptions.InvalidSchemaError('Unexpected key.', keypath + (exemplar,))
 
-def _add_default_to_optional_keys(schema_schema):
-    schema_schema['optional_keys']['default'] = {
-            'type': 'any',
-            'nullable': True
-    }
+    if missing:
+        exemplar = missing.pop()
+        raise exceptions.InvalidSchemaError('Missing key.', keypath + (exemplar,))
 
-def _validate_general_schema(schema, with_default):
-    schema_schema = {
-        "type": "dict",
-        "required_keys": {"type": {"type": "string"}},
-        "optional_keys": {"nullable": {"type": "boolean",}},
-        "extra_keys_schema": {"type": "any"},
-    }
+def _validate_dict_schema(dict_schema, keypath, allow_default):
+    _check_keys(
+            dict_schema.keys(),
+            required={'type'},
+            optional={'required_keys', 'optional_keys', 'extra_keys_schema', 'nullable'},
+            keypath=keypath,
+            allow_default=allow_default
+            )
 
-    if with_default:
-        _add_default_to_optional_keys(schema_schema)
+    for key, key_schema in dict_schema.get('required_keys', {}).items():
+        _validate_schema(key_schema, keypath + ('required_keys', key))
 
-    _try_to_resolve_without_validating(schema, schema_schema)
+    for key, key_schema in dict_schema.get('optional_keys', {}).items():
+        _validate_schema(key_schema, keypath + ('optional_keys', key), allow_default=True)
 
-
-def _validate_leaf_schema(leaf_schema, with_default):
-    leaf_schema_schema = {
-        "type": "dict",
-        "required_keys": {"type": {"type": "string"}},
-        "optional_keys": {"nullable": {"type": "boolean"}}
-    }
-
-    if with_default:
-        _add_default_to_optional_keys(leaf_schema_schema)
-
-    _try_to_resolve_without_validating(leaf_schema, leaf_schema_schema)
-
-def _validate_dict_schema(dict_schema, with_default):
-    dict_schema_schema = {
-        "type": "dict",
-        "required_keys": {"type": {"type": "string"}},
-        "optional_keys": {
-            "required_keys": {"type": "any"},
-            "optional_keys": {"type": "any"},
-            "extra_keys_schema": {"type": "any"},
-            "nullable": {"type": "boolean",},
-        },
-    }
-
-    if with_default:
-        _add_default_to_optional_keys(dict_schema_schema)
-
-    _try_to_resolve_without_validating(dict_schema, dict_schema_schema)
-
-    required_keys = dict_schema.get("required_keys", {})
-    optional_keys = dict_schema.get("optional_keys", {})
-
-    for key_spec in required_keys.values():
-        _validate_required_key_spec(key_spec)
-
-    for key_spec in optional_keys.values():
-        _validate_optional_key_spec(key_spec)
-
-    if "extra_keys_schema" in dict_schema:
-        _validate_schema(dict_schema["extra_keys_schema"])
+    if 'extra_keys_schema' in dict_schema:
+        _validate_schema(dict_schema['extra_keys_schema'], keypath + ('extra_keys_schema',))
 
 
-def _validate_required_key_spec(key_spec):
-    if 'default' in key_spec:
-        raise exceptions.SchemaError('Required key cannot list default.', ())
+def _validate_list_schema(list_schema, keypath, allow_default):
+    _check_keys(
+            list_schema.keys(),
+            required={'type', 'element_schema'},
+            optional={'nullable'},
+            keypath=keypath,
+            allow_default=allow_default
+            )
 
-    _validate_schema(key_spec)
-
-
-def _validate_optional_key_spec(key_spec):
-    _validate_schema(key_spec, with_default=True)
-
-
-def _validate_list_schema(list_schema, with_default):
-    list_schema_schema = {
-        "type": "dict",
-        "required_keys": {
-            "type": {"type": "string"},
-            "element_schema": {"type": "any"},
-        },
-        "optional_keys": {"nullable": {"type": "boolean",}},
-    }
-
-    if with_default:
-        _add_default_to_optional_keys(list_schema_schema)
-
-    _try_to_resolve_without_validating(list_schema, list_schema_schema)
-    _validate_schema(list_schema["element_schema"])
+    _validate_schema(list_schema['element_schema'], keypath + ('element_schema',), allow_default)
 
 
-def _validate_any_schema(any_schema, with_default):
-    any_schema_schema = {
-        "type": "dict",
-        "required_keys": {"type": {"type": "string"}},
-        "optional_keys": {"nullable": {"type": "boolean",}},
-    }
+def _validate_leaf_schema(leaf_schema, keypath, allow_default):
+    _check_keys(
+            leaf_schema.keys(),
+            required={'type'},
+            optional={'nullable'},
+            keypath=keypath,
+            allow_default=allow_default
+            )
 
-    if with_default:
-        _add_default_to_optional_keys(any_schema_schema)
 
-
-    _try_to_resolve_without_validating(any_schema, any_schema_schema)
+def _validate_any_schema(any_schema, keypath, allow_default):
+    _check_keys(
+            any_schema.keys(),
+            required={'type'},
+            optional={'nullable'},
+            keypath=keypath,
+            allow_default=allow_default
+            )

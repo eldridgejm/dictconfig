@@ -2,27 +2,27 @@ class Error(Exception):
     """A general error."""
 
 
-class SchemaError(Error):
+class InvalidSchemaError(Error):
     """An error while validating an dictconfig schema."""
+
+    def __init__(self, reason, keypath):
+        self.reason = reason
+        self.keypath = keypath
+
+    def __str__(self):
+        dotted = ".".join(self.keypath)
+        return f"Invalid schema at keypath: \"{dotted}\". {self.reason}"
 
 
 class ResolutionError(Error):
     """An error while resolving an dictconfig."""
 
-
-class MissingKeyError(ResolutionError):
-    """A required key is missing."""
-
-    def __init__(self, path):
-        self.path = path
+    def __init__(self, reason, keypath):
+        self.reason = reason
+        self.keypath = keypath
 
     def __str__(self):
-        dotted = ".".join(self.path)
-        return f'Missing key at path: "{dotted}".'
-
-
-class ExtraKeyError(ResolutionError):
-    """An unexpected extra key has been provided."""
+        return f"Cannot resolve keypath: {self.keypath}: {self.reason}"
 
 
 class ParseError(ResolutionError):
