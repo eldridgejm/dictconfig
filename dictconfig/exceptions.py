@@ -26,5 +26,5 @@ class ResolutionError(Error):
         return f"Cannot resolve keypath: \"{dotted}\": {self.reason}"
 
 
-class ParseError(ResolutionError):
+class ParseError(Error):
     """Could not parse the configuration value."""
