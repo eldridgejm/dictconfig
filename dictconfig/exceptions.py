@@ -22,7 +22,8 @@ class ResolutionError(Error):
         self.keypath = keypath
 
     def __str__(self):
-        return f"Cannot resolve keypath: {self.keypath}: {self.reason}"
+        dotted = ".".join(self.keypath)
+        return f"Cannot resolve keypath: \"{dotted}\": {self.reason}"
 
 
 class ParseError(ResolutionError):

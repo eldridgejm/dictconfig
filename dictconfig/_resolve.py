@@ -311,9 +311,10 @@ class _LeafNode:
 
     """
 
-    def __init__(self, raw, type_, nullable=False):
+    def __init__(self, raw, type_, keypath, nullable=False):
         self.raw = raw
         self.type_ = type_
+        self.keypath = keypath
         self.nullable = nullable
 
         # The resolved value of the leaf node. There are two special values. If
@@ -326,7 +327,7 @@ class _LeafNode:
     @classmethod
     def from_raw(cls, raw, leaf_schema, keypath, nullable=False):
         """Create a leaf node from the raw configuration and schema."""
-        return cls(raw, leaf_schema["type"], nullable)
+        return cls(raw, leaf_schema["type"], keypath, nullable)
 
     @property
     def references(self):
@@ -367,7 +368,7 @@ class _LeafNode:
         """
 
         if self._resolved is _PENDING:
-            raise exceptions.ResolutionError("Circular reference", "")
+            raise exceptions.ResolutionError("Circular reference", self.keypath)
 
         if self._resolved is not _UNDISCOVERED:
             return self._resolved
@@ -376,13 +377,20 @@ class _LeafNode:
 
         s = self.raw
         for reference_path in self.references:
-            s = resolver.interpolate(s, reference_path)
+            s = self._safely(resolver.interpolate, s, reference_path)
 
         if self.nullable and self.raw is None:
             self._resolved = None
         else:
-            self._resolved = resolver.parse(s, self.type_)
+            self._resolved = self._safely(resolver.parse, s, self.type_)
         return self._resolved
+
+
+    def _safely(self, fn, *args):
+        try:
+            return fn(*args)
+        except exceptions.Error as exc:
+            raise exceptions.ResolutionError(exc, self.keypath)
 
 
 # resolver
@@ -429,8 +437,8 @@ class _Resolver:
         try:
             referred_leaf_node = _get_path(self.root, exploded_path[1:])
         except KeyError:
-            keypath = "${" + ".".join(exploded_path) + "}"
-            raise exceptions.ResolutionError(f"Cannot resolve {keypath}")
+            dotted = ".".join(exploded_path)
+            raise exceptions.Error(f"Cannot resolve: {dotted}")
 
         return referred_leaf_node.resolve(self)
 
@@ -438,8 +446,9 @@ class _Resolver:
         try:
             return _get_path(self.external_variables, exploded_path)
         except KeyError:
-            raise exceptions.ResolutionError(
-                f"Cannot find {exploded_path} in external variables."
+            dotted = '.'.join(exploded_path)
+            raise exceptions.Error(
+                f"Cannot find \"{dotted}\" in external variables."
             )
 
     def parse(self, s, type_):
@@ -447,7 +456,7 @@ class _Resolver:
         try:
             parser = self.parsers[type_]
         except KeyError:
-            raise exceptions.ResolutionError(f'No parser for type "{type_}".', "")
+            raise exceptions.Error(f'No parser for type "{type_}".')
 
         return parser(s)
 

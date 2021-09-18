@@ -454,3 +454,21 @@ def test_exception_has_correct_path_with_missing_key_in_nested_dict_within_list(
         resolve(lst, schema)
 
     assert excinfo.value.keypath == (1, "foo")
+
+
+def test_exception_when_cannot_resolve_external_variable():
+    # given
+    schema = {
+        "type": "dict",
+        "required_keys": {
+            "foo": {"type": "string"}
+        }
+    }
+
+    dct = {"foo": "${ext.bar}"}
+
+    # when
+    with raises(exceptions.ResolutionError) as excinfo:
+        resolve(dct, schema)
+
+    assert excinfo.value.keypath == ("foo",)
