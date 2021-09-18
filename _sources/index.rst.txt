@@ -155,19 +155,10 @@ configuration tree.  The "grammar" of a schema is roughly as follows:
 
     <DICT_SCHEMA> = {
         "type": "dict",
-        ["required_keys": {<KEY_NAME>: <REQUIRED_KEY_SPEC>, ...}],
-        ["optional_keys": {<KEY_NAME>: <OPTIONAL_KEY_SPEC>, ...}],
+        ["required_keys": {<KEY_NAME>: <SCHEMA>, ...}],
+        ["optional_keys": {<KEY_NAME>: (<SCHEMA> | <SCHEMA_WITH_DEFAULT>), ...}],
         ["extra_keys_schema": <SCHEMA>],
         ["nullable": (True | False)],
-    }
-
-    <REQUIRED_KEY_SPEC> = {
-        "value_schema": <SCHEMA>
-    }
-
-    <OPTIONAL_KEY_SPEC> = {
-        "value_schema": <SCHEMA>,
-        ["default": <VALUE>]
     }
 
     <LIST_SCHEMA> = {
@@ -185,6 +176,15 @@ configuration tree.  The "grammar" of a schema is roughly as follows:
         "type": "any"
     }
 
+    <SCHEMA_WITH_DEFAULT> = (
+        <DICT_SCHEMA_WITH_DEFAULT>
+        | <LIST_SCHEMA_WITH_DEFAULT>
+        | <LEAF_SCHEMA_WITH_DEFAULT>
+        | <ANY_SCHEMA_WITH_DEFAULT>
+    )
+
+A <SCHEMA_WITH_DEFAULT> is like its corresponding schema, but with an added
+"default" key that supplies a default value.
 
 A type of "any" denotes that the configuration option will be left as-is with
 no parsing, however, interpolation still takes place.

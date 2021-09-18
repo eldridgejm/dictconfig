@@ -205,19 +205,10 @@ configuration tree.  The “grammar” of a schema is roughly as follows:</p>
 
 &lt;DICT_SCHEMA&gt; = {
     &quot;type&quot;: &quot;dict&quot;,
-    [&quot;required_keys&quot;: {&lt;KEY_NAME&gt;: &lt;REQUIRED_KEY_SPEC&gt;, ...}],
-    [&quot;optional_keys&quot;: {&lt;KEY_NAME&gt;: &lt;OPTIONAL_KEY_SPEC&gt;, ...}],
+    [&quot;required_keys&quot;: {&lt;KEY_NAME&gt;: &lt;SCHEMA&gt;, ...}],
+    [&quot;optional_keys&quot;: {&lt;KEY_NAME&gt;: (&lt;SCHEMA&gt; | &lt;SCHEMA_WITH_DEFAULT&gt;), ...}],
     [&quot;extra_keys_schema&quot;: &lt;SCHEMA&gt;],
     [&quot;nullable&quot;: (True | False)],
-}
-
-&lt;REQUIRED_KEY_SPEC&gt; = {
-    &quot;value_schema&quot;: &lt;SCHEMA&gt;
-}
-
-&lt;OPTIONAL_KEY_SPEC&gt; = {
-    &quot;value_schema&quot;: &lt;SCHEMA&gt;,
-    [&quot;default&quot;: &lt;VALUE&gt;]
 }
 
 &lt;LIST_SCHEMA&gt; = {
@@ -234,8 +225,17 @@ LEAF_SCHEMA = {
 &lt;ANY_SCHEMA&gt; = {
     &quot;type&quot;: &quot;any&quot;
 }
+
+&lt;SCHEMA_WITH_DEFAULT&gt; = (
+    &lt;DICT_SCHEMA_WITH_DEFAULT&gt;
+    | &lt;LIST_SCHEMA_WITH_DEFAULT&gt;
+    | &lt;LEAF_SCHEMA_WITH_DEFAULT&gt;
+    | &lt;ANY_SCHEMA_WITH_DEFAULT&gt;
+)
 </pre></div>
 </div>
+<p>A &lt;SCHEMA_WITH_DEFAULT&gt; is like its corresponding schema, but with an added
+“default” key that supplies a default value.</p>
 <p>A type of “any” denotes that the configuration option will be left as-is with
 no parsing, however, interpolation still takes place.</p>
 <p>Optionally, a leaf value can be “nullable”, meaning that <cite>None</cite> is a valid
