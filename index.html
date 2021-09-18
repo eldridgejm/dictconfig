@@ -285,7 +285,7 @@ configuration is a dictionary, the schema must be a dict schema.</p>
 <li><p><strong>raw_cfg</strong> – The raw configuration.</p></li>
 <li><p><strong>schema</strong> – The schema describing the types in the raw configuration.</p></li>
 <li><p><strong>external_variables</strong> – A (nested) dictionary of external variables that may be interpolated into
-the raw configuration. External variables can be referred to by dotted paths in
+the raw configuration. External variables can be referred to by dotted keypaths in
 the configuration. For example, <code class="code docutils literal notranslate"><span class="pre">${foo.bar.baz}</span></code> will reference the value
 42 in the dictionary <code class="code docutils literal notranslate"><span class="pre">{'foo':</span> <span class="pre">{'bar':</span> <span class="pre">{'baz':</span> <span class="pre">42}}}</span></code>.</p></li>
 <li><p><strong>override_parsers</strong> – A dictionary mapping leaf type names to parser functions. The parser functions
@@ -294,7 +294,7 @@ type. If this is not provided, the default parsers are used.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Raises</dt>
-<dd class="field-even"><p><strong>SchemaError</strong> – If the schema is not valid.</p>
+<dd class="field-even"><p><strong>InvalidSchemaError</strong> – If the schema is not valid.</p>
 </dd>
 </dl>
 </dd></dl>
