@@ -180,6 +180,11 @@ def smartdatetime(s):
         pass
 
     try:
+        return _parse_datetime_from_explicit(s)
+    except _DateMatchError:
+        pass
+
+    try:
         return _parse_timedelta_before_or_after(s)
     except _DateMatchError:
         pass
@@ -190,6 +195,19 @@ def smartdatetime(s):
         pass
 
     raise exceptions.ParseError(f"Cannot parse into datetime: '{s}'.")
+
+
+def _parse_datetime_from_explicit(s):
+    s, at_time = _parse_and_remove_time(s)
+    try:
+        parsed = datetimelib.datetime.fromisoformat(s)
+    except ValueError:
+        raise _DateMatchError
+
+    if at_time is not None:
+        parsed = datetimelib.datetime.combine(parsed, at_time)
+
+    return parsed
 
 
 def _parse_and_remove_time(s):

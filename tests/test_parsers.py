@@ -106,6 +106,12 @@ def test_smartdatetime_from_explicit_datetime():
     )
 
 
+def test_smartdatetime_from_explicit_datetime_with_at_time_overwrites():
+    assert parsers.smartdatetime(
+        "2021-10-05 23:59:10 at 22:00:00"
+    ) == datetime.datetime(2021, 10, 5, 22, 0, 0)
+
+
 def test_smartdatetime_from_date_object():
     assert parsers.smartdatetime(datetime.date(2021, 10, 10)) == datetime.datetime(
         2021, 10, 10, 0, 0, 0
