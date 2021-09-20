@@ -130,6 +130,12 @@ def test_smartdatetime_delta_days_after():
     ) == datetime.datetime(2021, 10, 8, 23, 59, 15)
 
 
+def test_smartdatetime_delta_allows_overwriting_time_with_at():
+    assert parsers.smartdatetime(
+        "3 days before 2021-10-05 23:59:15 at 22:00:00"
+    ) == datetime.datetime(2021, 10, 2, 22, 0, 0)
+
+
 def test_smartdatetime_delta_hours_before():
     assert parsers.smartdatetime(
         "3 hours before 2021-10-05 23:59:15"
@@ -158,3 +164,9 @@ def test_smartdatetime_first_date_after_multiple_choices():
     assert parsers.smartdatetime(
         "first monday, friday after 2021-09-14"
     ) == datetime.datetime(2021, 9, 17)
+
+
+def test_smartdatetime_first_date_after_allows_overwriting_time_with_at():
+    assert parsers.smartdatetime(
+        "first monday after 2021-09-14 23:59:00 at 22:00:00"
+    ) == datetime.datetime(2021, 9, 20, 22, 0, 0)

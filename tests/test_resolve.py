@@ -458,12 +458,7 @@ def test_exception_has_correct_path_with_missing_key_in_nested_dict_within_list(
 
 def test_exception_when_cannot_resolve_external_variable():
     # given
-    schema = {
-        "type": "dict",
-        "required_keys": {
-            "foo": {"type": "string"}
-        }
-    }
+    schema = {"type": "dict", "required_keys": {"foo": {"type": "string"}}}
 
     dct = {"foo": "${ext.bar}"}
 

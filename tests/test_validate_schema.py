@@ -21,7 +21,7 @@ def test_dict_schema_smoke():
     schema = {
         "type": "dict",
         "required_keys": {"foo": {"type": "integer"},},
-        "optional_keys": {"bar": {"type": "integer", "default": 42},}
+        "optional_keys": {"bar": {"type": "integer", "default": 42},},
     }
 
     validate_schema(schema)
@@ -43,6 +43,7 @@ def test_raises_if_unknown_key_is_provided_for_required_key_spec():
     with raises(exceptions.InvalidSchemaError) as excinfo:
         validate_schema(schema)
 
+
 def test_raises_if_unknown_key_is_provided_for_optional_key_spec():
     schema = {
         "type": "dict",
@@ -61,7 +62,10 @@ def test_raises_if_extra_keys_schema_is_not_a_valid_schema():
 
 
 def test_raises_if_default_is_provided_for_a_required_key():
-    schema = {"type": "dict", "required_keys": {"foo": {"type": "integer", "default": 42}}}
+    schema = {
+        "type": "dict",
+        "required_keys": {"foo": {"type": "integer", "default": 42}},
+    }
 
     with raises(exceptions.InvalidSchemaError) as excinfo:
         validate_schema(schema)
@@ -93,7 +97,7 @@ def test_raises_if_unknown_key_is_provided_for_list_schema():
 def test_allow_defaults_to_be_null():
     schema = {
         "type": "dict",
-        "optional_keys": {"foo": {"default": None, "type": "any"}}
+        "optional_keys": {"foo": {"default": None, "type": "any"}},
     }
 
     validate_schema(schema)
