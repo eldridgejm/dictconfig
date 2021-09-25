@@ -489,7 +489,7 @@ class _LeafNode:
                 **self.resolution_context.external_variables, this=self.root
             )
         except jinja2.exceptions.UndefinedError as exc:
-            raise exceptions.ResolutionError(exc, self.keypath)
+            raise exceptions.ResolutionError(str(exc), self.keypath)
 
     def _parse(self, s, type_):
         """Parse the configuration string into its final type."""
