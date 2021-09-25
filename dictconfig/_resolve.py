@@ -228,10 +228,7 @@ class _DictNode:
     @classmethod
     def from_raw(cls, dct, dict_schema, keypath, parent=None):
         """Construct a _DictNode from a raw configuration dictionary and its schema."""
-        node = cls()
-
-        if parent is not None:
-            node.parent = parent
+        node = cls(parent=parent)
 
         children = {}
         _populate_required_keys_children(children, dct, dict_schema, node, keypath)
@@ -331,7 +328,7 @@ class _ListNode:
     @classmethod
     def from_raw(cls, lst, list_schema, keypath, parent=None):
         """Make an internal list node from a raw list and recurse on the children."""
-        node = cls()
+        node = cls(parent=parent)
 
         child_schema = list_schema["element_schema"]
 
