@@ -15,7 +15,7 @@
             python3Packages.buildPythonPackage {
               name = "dictconfig";
               src = ./.;
-              propagatedBuildInputs = with python3Packages; [ ];
+              propagatedBuildInputs = with python3Packages; [ jinja2 ];
               nativeBuildInputs = with python3Packages; [ pytest black ipython sphinx sphinx_rtd_theme ];
             }
 
