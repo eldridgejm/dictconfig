@@ -14,17 +14,14 @@ itself and recursively delegates the resolution of the child nodes. For
 instance, _DictNode.resolve() returns a dictionary whose values are resolved
 child nodes. The "real work" occurs in two key places. First is _LeafNode.resolve().
 Here, the resolution of a leaf node is orchestrated: references to other leaf
-nodes and to external variables are interpolated and the parser is applied. The
-actual implementation of the interpolating code is in _Resolver; an instance of
-the _Resolver is passed to a node when it is resolved. The reason for involving the
-_Resolver class is that individual nodes know little about the world: they do not know
-the root of their tree or what parsers are available. While this information could be
-supplied when the node is instantiated, it is thought cleaner to keep it separate.
+nodes and to external variables are interpolated and the parser is applied.
 
 """
 import dataclasses
 import re
 import typing
+
+import jinja2
 
 from . import exceptions
 from . import parsers as _parsers
@@ -106,8 +103,7 @@ def resolve(
     root = _build_configuration_tree_node(raw_cfg, schema)
     _provide_context_to_leaf_nodes(root, resolution_context)
 
-    resolver = _Resolver(root, external_variables, parsers)
-    return root.resolve(resolver)
+    return root.resolve()
 
 
 def _provide_context_to_leaf_nodes(node, resolution_context):
@@ -119,7 +115,6 @@ def _provide_context_to_leaf_nodes(node, resolution_context):
     elif isinstance(node, _ListNode):
         for child in node.children:
             _provide_context_to_leaf_nodes(child, resolution_context)
-
 
 
 def _update_parsers(overrides):
@@ -170,7 +165,7 @@ def _build_configuration_tree_node(raw_cfg, schema, parent=None, keypath=tuple()
     """
     if raw_cfg is None:
         if "nullable" in schema and schema["nullable"]:
-            return _LeafNode.from_raw(None, {"type": "any"}, keypath)
+            return _LeafNode.from_raw(None, {"type": "any"}, keypath, parent=parent)
         else:
             raise exceptions.ResolutionError("Unexpectedly null.", keypath)
 
@@ -183,16 +178,16 @@ def _build_configuration_tree_node(raw_cfg, schema, parent=None, keypath=tuple()
                 "type": "dict",
                 "extra_keys_schema": {"type": "any", "nullable": True},
             }
-        return _DictNode.from_raw(raw_cfg, schema, keypath)
+        return _DictNode.from_raw(raw_cfg, schema, keypath, parent=parent)
     elif isinstance(raw_cfg, list):
         if schema["type"] == "any":
             schema = {
                 "type": "list",
                 "element_schema": {"type": "any", "nullable": True},
             }
-        return _ListNode.from_raw(raw_cfg, schema, keypath)
+        return _ListNode.from_raw(raw_cfg, schema, keypath, parent=parent)
     else:
-        return _LeafNode.from_raw(raw_cfg, schema, keypath)
+        return _LeafNode.from_raw(raw_cfg, schema, keypath, parent=parent)
 
 
 # denotes that a node is currently being resolved
@@ -232,12 +227,23 @@ class _DictNode:
         node.children = children
         return node
 
-    def __getitem__(self, key):
-        return self.children[key]
+    def __getitem__(self, ix):
+        child = self.children[ix]
+        if isinstance(child, _LeafNode):
+            return child.resolve()
+        else:
+            return child
 
-    def resolve(self, resolver):
+    @property
+    def root(self):
+        if self.parent is None:
+            return self
+        else:
+            return self.parent.root
+
+    def resolve(self):
         """Recursively resolve the _DictNode into a dictionary."""
-        return {key: child.resolve(resolver) for key, child in self.children.items()}
+        return {key: child.resolve() for key, child in self.children.items()}
 
 
 def _populate_required_keys_children(children, dct, dict_schema, parent, keypath):
@@ -245,7 +251,9 @@ def _populate_required_keys_children(children, dct, dict_schema, parent, keypath
 
     for key, key_schema in required_keys.items():
         if key not in dct:
-            raise exceptions.ResolutionError("Missing required key.", (keypath + (key,)))
+            raise exceptions.ResolutionError(
+                "Missing required key.", (keypath + (key,))
+            )
 
         children[key] = _build_configuration_tree_node(
             dct[key], key_schema, parent, keypath + (key,)
@@ -266,7 +274,9 @@ def _populate_optional_keys_children(children, dct, dict_schema, parent, keypath
             # key is missing and no default was provided
             continue
 
-        children[key] = _build_configuration_tree_node(value, key_schema, parent, keypath + (key,))
+        children[key] = _build_configuration_tree_node(
+            value, key_schema, parent, keypath + (key,)
+        )
 
 
 def _populate_extra_keys_children(children, dct, dict_schema, parent, keypath):
@@ -310,18 +320,31 @@ class _ListNode:
 
         children = []
         for i, lst_value in enumerate(lst):
-            r = _build_configuration_tree_node(lst_value, child_schema, node, keypath + (i,))
+            r = _build_configuration_tree_node(
+                lst_value, child_schema, node, keypath + (i,)
+            )
             children.append(r)
 
         node.children = children
         return node
 
     def __getitem__(self, ix):
-        return self.children[ix]
+        child = self.children[ix]
+        if isinstance(child, _LeafNode):
+            return child.resolve()
+        else:
+            return child
 
-    def resolve(self, resolver):
+    @property
+    def root(self):
+        if self.parent is None:
+            return self
+        else:
+            return self.parent.root
+
+    def resolve(self):
         """Recursively resolve the _ListNode into a list."""
-        return [child.resolve(resolver) for child in self.children]
+        return [child.resolve() for child in self.children]
 
 
 class _LeafNode:
@@ -340,7 +363,9 @@ class _LeafNode:
 
     """
 
-    def __init__(self, raw, type_, parent, keypath, resolution_context=None, nullable=False):
+    def __init__(
+        self, raw, type_, parent, keypath, resolution_context=None, nullable=False
+    ):
         self.raw = raw
         self.type_ = type_
         self.parent = parent
@@ -360,38 +385,12 @@ class _LeafNode:
         """Create a leaf node from the raw configuration and schema."""
         return cls(raw, leaf_schema["type"], parent, keypath, nullable)
 
-    def resolve(self, resolver):
-        """Resolve the leaf's value by 1) interpolating and 2) parsing.
-
-        Parameters
-        ----------
-        resolver : _Resolver
-            A _Resolver instance. The resolver is responsible for carrying out the 
-            interpolation of references and for doing the actual parsing.
-
-        Returns
-        -------
-        The resolved value.
-
-        """
-
-        if self._resolved is _PENDING:
-            raise exceptions.ResolutionError("Circular reference", self.keypath)
-
-        if self._resolved is not _UNDISCOVERED:
-            return self._resolved
-
-        self._resolved = _PENDING
-
-        s = self.raw
-        for reference_path in self.references:
-            s = self._safely(resolver.interpolate, s, reference_path)
-
-        if self.nullable and self.raw is None:
-            self._resolved = None
+    @property
+    def root(self):
+        if self.parent is None:
+            return self
         else:
-            self._resolved = self._safely(resolver.parse, s, self.type_)
-        return self._resolved
+            return self.parent.root
 
     @property
     def references(self):
@@ -416,6 +415,34 @@ class _LeafNode:
         pattern = r"\$\{\s?(.+?)\s?\}"
         return re.findall(pattern, self.raw)
 
+    def resolve(self):
+        """Resolve the leaf's value by 1) interpolating and 2) parsing.
+
+        Returns
+        -------
+        The resolved value.
+
+        """
+
+        if self._resolved is _PENDING:
+            raise exceptions.ResolutionError("Circular reference", self.keypath)
+
+        if self._resolved is not _UNDISCOVERED:
+            return self._resolved
+
+        self._resolved = _PENDING
+
+        s = self.raw
+        for reference_path in self.references:
+            s = self._safely(self._interpolate, s, reference_path)
+
+        if self.nullable and self.raw is None:
+            self._resolved = None
+        else:
+            self._resolved = self._safely(self._parse, s, self.type_)
+
+        return self._resolved
+
     def _interpolate(self, s, reference_path):
         """Replace a reference keypath with its resolved value.
 
@@ -433,70 +460,25 @@ class _LeafNode:
         """
         exploded_path = _explode_dotted_path_string(reference_path)
 
-        if exploded_path[0] == "self":
-            substitution = self._retrieve_from_root(exploded_path)
-        else:
-            substitution = self._retrieve_from_external_variables(exploded_path)
+        template = jinja2.Template(
+            s, variable_start_string="${", variable_end_string="}"
+        )
 
-        pattern = r"\$\{\s?" + reference_path + r"\s?\}"
-        return re.sub(pattern, str(substitution), s)
-
-    
-
-
-    def _safely(self, fn, *args):
         try:
-            return fn(*args)
-        except exceptions.Error as exc:
+            return template.render(
+                **self.resolution_context.external_variables, this=self.root
+            )
+        except jinja2.exceptions.UndefinedError as exc:
             raise exceptions.ResolutionError(exc, self.keypath)
 
+    def _parse(self, s, type_):
+        """Parse the configuration string into its final type."""
+        try:
+            parser = self.resolution_context.parsers[type_]
+        except KeyError:
+            raise exceptions.Error(f'No parser for type "{type_}".')
 
-# resolver
-# --------
-# A resolver is responsible for managing the resolution context. When a leaf node is
-# resolved, it needs to know how to interpolate its references into a final string
-# representation, and how to parse this string representation into its final
-# resolved value. A resolver manages this by keeping track of the configuration tree's
-# root, the external variables, and the parsers for each type.
-
-
-@dataclasses.dataclass
-class _ResolutionContext:
-
-    external_variables: typing.Mapping
-    parsers: typing.Mapping
-
-
-class _Resolver:
-    def __init__(self, root, external_variables, parsers):
-        self.root = root
-        self.external_variables = external_variables
-        self.parsers = parsers
-
-    def interpolate(self, s, reference_path):
-        """Replace a reference keypath with its resolved value.
-
-        Parameters
-        ----------
-        s : str
-            A configuration string with references to other values.
-        reference_path : str
-            The reference keypath that will be resolved and replaced.
-
-        Returns
-        -------
-        The interpolated string.
-
-        """
-        exploded_path = _explode_dotted_path_string(reference_path)
-
-        if exploded_path[0] == "self":
-            substitution = self._retrieve_from_root(exploded_path)
-        else:
-            substitution = self._retrieve_from_external_variables(exploded_path)
-
-        pattern = r"\$\{\s?" + reference_path + r"\s?\}"
-        return re.sub(pattern, str(substitution), s)
+        return parser(s)
 
     def _retrieve_from_root(self, exploded_path):
         try:
@@ -505,25 +487,27 @@ class _Resolver:
             dotted = ".".join(exploded_path)
             raise exceptions.Error(f"Cannot resolve: {dotted}")
 
-        return referred_leaf_node.resolve(self)
+        return referred_leaf_node.resolve()
 
     def _retrieve_from_external_variables(self, exploded_path):
         try:
-            return _get_path(self.external_variables, exploded_path)
+            return _get_path(self.resolution_context.external_variables, exploded_path)
         except KeyError:
-            dotted = '.'.join(exploded_path)
-            raise exceptions.Error(
-                f"Cannot find \"{dotted}\" in external variables."
-            )
+            dotted = ".".join(exploded_path)
+            raise exceptions.Error(f'Cannot find "{dotted}" in external variables.')
 
-    def parse(self, s, type_):
-        """Parse the configuration string into its final type."""
+    def _safely(self, fn, *args):
         try:
-            parser = self.parsers[type_]
-        except KeyError:
-            raise exceptions.Error(f'No parser for type "{type_}".')
+            return fn(*args)
+        except exceptions.Error as exc:
+            raise exceptions.ResolutionError(exc, self.keypath)
 
-        return parser(s)
+
+@dataclasses.dataclass
+class _ResolutionContext:
+
+    external_variables: typing.Mapping
+    parsers: typing.Mapping
 
 
 # helpers
@@ -563,7 +547,7 @@ def _validate_schema(schema, keypath=tuple(), allow_default=False):
         raise exceptions.InvalidSchemaError("Schema must be a dict.", keypath)
 
     if "type" not in schema:
-        raise exceptions.InvalidSchemaError('Required key missing.', keypath + (type,))
+        raise exceptions.InvalidSchemaError("Required key missing.", keypath + (type,))
 
     args = (schema, keypath, allow_default)
 
@@ -578,65 +562,72 @@ def _validate_schema(schema, keypath=tuple(), allow_default=False):
 def _check_keys(provided, required, optional, keypath, allow_default):
     allowed = required | optional
     if allow_default:
-        allowed.add('default')
+        allowed.add("default")
 
     extra = provided - allowed
     missing = required - provided
 
     if extra:
         exemplar = extra.pop()
-        raise exceptions.InvalidSchemaError('Unexpected key.', keypath + (exemplar,))
+        raise exceptions.InvalidSchemaError("Unexpected key.", keypath + (exemplar,))
 
     if missing:
         exemplar = missing.pop()
-        raise exceptions.InvalidSchemaError('Missing key.', keypath + (exemplar,))
+        raise exceptions.InvalidSchemaError("Missing key.", keypath + (exemplar,))
+
 
 def _validate_dict_schema(dict_schema, keypath, allow_default):
     _check_keys(
-            dict_schema.keys(),
-            required={'type'},
-            optional={'required_keys', 'optional_keys', 'extra_keys_schema', 'nullable'},
-            keypath=keypath,
-            allow_default=allow_default
-            )
+        dict_schema.keys(),
+        required={"type"},
+        optional={"required_keys", "optional_keys", "extra_keys_schema", "nullable"},
+        keypath=keypath,
+        allow_default=allow_default,
+    )
 
-    for key, key_schema in dict_schema.get('required_keys', {}).items():
-        _validate_schema(key_schema, keypath + ('required_keys', key))
+    for key, key_schema in dict_schema.get("required_keys", {}).items():
+        _validate_schema(key_schema, keypath + ("required_keys", key))
 
-    for key, key_schema in dict_schema.get('optional_keys', {}).items():
-        _validate_schema(key_schema, keypath + ('optional_keys', key), allow_default=True)
+    for key, key_schema in dict_schema.get("optional_keys", {}).items():
+        _validate_schema(
+            key_schema, keypath + ("optional_keys", key), allow_default=True
+        )
 
-    if 'extra_keys_schema' in dict_schema:
-        _validate_schema(dict_schema['extra_keys_schema'], keypath + ('extra_keys_schema',))
+    if "extra_keys_schema" in dict_schema:
+        _validate_schema(
+            dict_schema["extra_keys_schema"], keypath + ("extra_keys_schema",)
+        )
 
 
 def _validate_list_schema(list_schema, keypath, allow_default):
     _check_keys(
-            list_schema.keys(),
-            required={'type', 'element_schema'},
-            optional={'nullable'},
-            keypath=keypath,
-            allow_default=allow_default
-            )
+        list_schema.keys(),
+        required={"type", "element_schema"},
+        optional={"nullable"},
+        keypath=keypath,
+        allow_default=allow_default,
+    )
 
-    _validate_schema(list_schema['element_schema'], keypath + ('element_schema',), allow_default)
+    _validate_schema(
+        list_schema["element_schema"], keypath + ("element_schema",), allow_default
+    )
 
 
 def _validate_leaf_schema(leaf_schema, keypath, allow_default):
     _check_keys(
-            leaf_schema.keys(),
-            required={'type'},
-            optional={'nullable'},
-            keypath=keypath,
-            allow_default=allow_default
-            )
+        leaf_schema.keys(),
+        required={"type"},
+        optional={"nullable"},
+        keypath=keypath,
+        allow_default=allow_default,
+    )
 
 
 def _validate_any_schema(any_schema, keypath, allow_default):
     _check_keys(
-            any_schema.keys(),
-            required={'type'},
-            optional={'nullable'},
-            keypath=keypath,
-            allow_default=allow_default
-            )
+        any_schema.keys(),
+        required={"type"},
+        optional={"nullable"},
+        keypath=keypath,
+        allow_default=allow_default,
+    )

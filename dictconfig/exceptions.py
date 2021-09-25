@@ -11,7 +11,7 @@ class InvalidSchemaError(Error):
 
     def __str__(self):
         dotted = ".".join(self.keypath)
-        return f"Invalid schema at keypath: \"{dotted}\". {self.reason}"
+        return f'Invalid schema at keypath: "{dotted}". {self.reason}'
 
 
 class ResolutionError(Error):
@@ -23,7 +23,7 @@ class ResolutionError(Error):
 
     def __str__(self):
         dotted = ".".join(self.keypath)
-        return f"Cannot resolve keypath: \"{dotted}\": {self.reason}"
+        return f'Cannot resolve keypath: "{dotted}": {self.reason}'
 
 
 class ParseError(Error):

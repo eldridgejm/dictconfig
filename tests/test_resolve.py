@@ -131,7 +131,7 @@ def test_interpolation_of_other_dictionary_entries_same_level():
         "required_keys": {"foo": {"type": "string"}, "bar": {"type": "string"},},
     }
 
-    dct = {"foo": "this", "bar": "testing ${self.foo}"}
+    dct = {"foo": "this", "bar": "testing ${this.foo}"}
 
     # when
     result = resolve(dct, schema)
@@ -150,7 +150,7 @@ def test_interpolation_of_other_dictionary_entries_different_level():
         },
     }
 
-    dct = {"foo": "testing ${self.bar.baz}", "bar": {"baz": "this"}}
+    dct = {"foo": "testing ${this.bar.baz}", "bar": {"baz": "this"}}
 
     # when
     result = resolve(dct, schema)
@@ -169,7 +169,7 @@ def test_interpolation_can_reference_list_elements():
         },
     }
 
-    dct = {"foo": "testing ${self.bar.1}", "bar": ["this", "that", "the other"]}
+    dct = {"foo": "testing ${this.bar.1}", "bar": ["this", "that", "the other"]}
 
     # when
     result = resolve(dct, schema)
@@ -208,8 +208,8 @@ def test_chain_of_multiple_interpolations():
 
     dct = {
         "foo": "this",
-        "bar": "testing ${self.foo}",
-        "baz": "now ${self.bar}",
+        "bar": "testing ${this.foo}",
+        "baz": "now ${this.bar}",
     }
 
     # when
@@ -221,7 +221,7 @@ def test_chain_of_multiple_interpolations():
     assert result["baz"] == "now testing this"
 
 
-def test_raises_if_self_reference_detected():
+def test_raises_if_this_reference_detected():
     # given
     schema = {
         "type": "dict",
@@ -229,7 +229,7 @@ def test_raises_if_self_reference_detected():
     }
 
     dct = {
-        "foo": "${self.foo}",
+        "foo": "${this.foo}",
     }
 
     # when
@@ -249,9 +249,9 @@ def test_raises_if_cyclical_reference_detected():
     }
 
     dct = {
-        "foo": "${self.baz}",
-        "bar": "${self.foo}",
-        "baz": "${self.bar}",
+        "foo": "${this.baz}",
+        "bar": "${this.foo}",
+        "baz": "${this.bar}",
     }
 
     # when
@@ -286,7 +286,7 @@ def test_parsing_occurs_after_interpolation():
         "required_keys": {"foo": {"type": "integer"}, "bar": {"type": "integer"},},
     }
 
-    dct = {"foo": "42", "bar": "${self.foo}"}
+    dct = {"foo": "42", "bar": "${this.foo}"}
 
     # when
     result = resolve(dct, schema)
@@ -348,7 +348,7 @@ def test_interpolation_occurs_when_any_is_used():
         "type": "any",
     }
 
-    dct = {"foo": "testing", "bar": "${self.foo} this"}
+    dct = {"foo": "testing", "bar": "${this.foo} this"}
 
     # when
     result = resolve(dct, schema)
@@ -458,12 +458,7 @@ def test_exception_has_correct_path_with_missing_key_in_nested_dict_within_list(
 
 def test_exception_when_cannot_resolve_external_variable():
     # given
-    schema = {
-        "type": "dict",
-        "required_keys": {
-            "foo": {"type": "string"}
-        }
-    }
+    schema = {"type": "dict", "required_keys": {"foo": {"type": "string"}}}
 
     dct = {"foo": "${ext.bar}"}
 
