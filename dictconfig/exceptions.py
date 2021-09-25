@@ -10,7 +10,7 @@ class InvalidSchemaError(Error):
         self.keypath = keypath
 
     def __str__(self):
-        dotted = ".".join(self.keypath)
+        dotted = _join_dotted(self.keypath)
         return f'Invalid schema at keypath: "{dotted}". {self.reason}'
 
 
@@ -22,9 +22,13 @@ class ResolutionError(Error):
         self.keypath = keypath
 
     def __str__(self):
-        dotted = ".".join(self.keypath)
+        dotted = _join_dotted(self.keypath)
         return f'Cannot resolve keypath: "{dotted}": {self.reason}'
 
 
 class ParseError(Error):
     """Could not parse the configuration value."""
+
+
+def _join_dotted(keypath):
+    return ".".join(str(x) for x in keypath)
