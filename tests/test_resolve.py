@@ -299,6 +299,26 @@ def test_interpolation_of_keys_with_dots():
     assert result["bar"] == "testing this"
 
 
+def test_interpolation_is_not_confused_by_default_jinja_syntax():
+    # given
+    schema = {
+        "type": "dict",
+        "required_keys": {"foo": {"type": "string"}, "bar": {"type": "string"},},
+    }
+
+    dct = {
+        "foo": "this",
+        "bar": "testing ${this.foo} {{ that }}",
+    }
+
+    # when
+    result = resolve(dct, schema)
+
+    # then
+    assert result["foo"] == "this"
+    assert result["bar"] == "testing this {{ that }}"
+
+
 # parsing
 # =======
 
