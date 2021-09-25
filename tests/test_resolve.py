@@ -259,6 +259,29 @@ def test_raises_if_cyclical_reference_detected():
         resolve(dct, schema)
 
 
+def test_can_use_jinja_methods():
+    # given
+    schema = {
+        "type": "dict",
+        "required_keys": {
+            "foo": {"type": "string"},
+            "bar": {"type": "string"},
+        },
+    }
+
+    dct = {
+        "foo": "this",
+        "bar": "testing ${this.foo.upper()}",
+    }
+
+    # when
+    result = resolve(dct, schema)
+
+    # then
+    assert result["foo"] == "this"
+    assert result["bar"] == "testing THIS"
+
+
 # parsing
 # =======
 
