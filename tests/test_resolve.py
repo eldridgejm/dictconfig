@@ -140,7 +140,7 @@ def test_interpolation_of_other_dictionary_entries_same_level():
     assert result["bar"] == "testing this"
 
 
-def test_interpolation_of_other_dictionary_entries_different_level():
+def test_interpolation_of_a_high_node_referencing_a_deeper_node():
     # given
     schema = {
         "type": "dict",
@@ -158,6 +158,25 @@ def test_interpolation_of_other_dictionary_entries_different_level():
     # then
     assert result["foo"] == "testing this"
 
+
+def test_interpolation_of_a_deep_node_referencing_a_higher_node():
+    # given
+    schema = {
+        "type": "dict",
+        "required_keys": {
+            "foo": {"type": "string"},
+            "bar": {"type": "dict", "required_keys": {"baz": {"type": "string"}},},
+        },
+    }
+
+    dct = {"foo": "testing", "bar": {"baz": "${this.foo} this"}}
+
+    # when
+    result = resolve(dct, schema)
+
+    # then
+    assert result["foo"] == "testing"
+    assert result["bar"]["baz"] == "testing this"
 
 def test_interpolation_can_reference_list_elements():
     # given
