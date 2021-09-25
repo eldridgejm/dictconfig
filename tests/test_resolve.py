@@ -120,8 +120,8 @@ def test_leafs_are_permitted_as_root_node():
     assert result == 42
 
 
-# intepolation
-# ============
+# interpolation
+# =============
 
 
 def test_interpolation_of_other_dictionary_entries_same_level():
@@ -263,10 +263,7 @@ def test_can_use_jinja_methods():
     # given
     schema = {
         "type": "dict",
-        "required_keys": {
-            "foo": {"type": "string"},
-            "bar": {"type": "string"},
-        },
+        "required_keys": {"foo": {"type": "string"}, "bar": {"type": "string"},},
     }
 
     dct = {
@@ -280,6 +277,26 @@ def test_can_use_jinja_methods():
     # then
     assert result["foo"] == "this"
     assert result["bar"] == "testing THIS"
+
+
+def test_interpolation_of_keys_with_dots():
+    # given
+    schema = {
+        "type": "dict",
+        "required_keys": {"foo.txt": {"type": "string"}, "bar": {"type": "string"},},
+    }
+
+    dct = {
+        "foo.txt": "this",
+        "bar": "testing ${this['foo.txt']}",
+    }
+
+    # when
+    result = resolve(dct, schema)
+
+    # then
+    assert result["foo.txt"] == "this"
+    assert result["bar"] == "testing this"
 
 
 # parsing

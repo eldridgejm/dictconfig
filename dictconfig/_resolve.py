@@ -12,9 +12,17 @@ _DictNode, _ListNode, and _LeafNode classes below.
 Each node type has a `.resolve()` method that knows how to resolve the node
 itself and recursively delegates the resolution of the child nodes. For
 instance, _DictNode.resolve() returns a dictionary whose values are resolved
-child nodes. The "real work" occurs in two key places. First is _LeafNode.resolve().
-Here, the resolution of a leaf node is orchestrated: references to other leaf
-nodes and to external variables are interpolated and the parser is applied.
+child nodes. The "real work" occurs in _LeafNode.resolve(). Here, the
+resolution of a leaf node is orchestrated: references to other leaf nodes and
+to external variables are interpolated and the parser is applied.
+
+Interpolation is done using the Jinja2 template engine. To facilitate this,
+each internal node type defines __getitem__. If the child node being retrieved
+is a _LeafNode, it is resolved. When interpolation is performed, the root
+node is passed as the variable named "this". Values of the resolved leaf nodes
+can be referenced using the standard Jinja dot notation; for example:
+
+    ${ this.foo.bar.baz }
 
 """
 import dataclasses
@@ -107,6 +115,7 @@ def resolve(
 
 
 def _provide_context_to_leaf_nodes(node, resolution_context):
+    """Set the resolution_context for all leaf nodes, recursively."""
     if isinstance(node, _LeafNode):
         node.resolution_context = resolution_context
     elif isinstance(node, _DictNode):
@@ -157,6 +166,8 @@ def _build_configuration_tree_node(raw_cfg, schema, parent=None, keypath=tuple()
         configuration.
     schema
         A schema dictionary describing the types of the configuration tree nodes.
+    parent
+        The parent node of the node being built. Can be `None`.
 
     Returns
     -------
@@ -204,6 +215,9 @@ class _DictNode:
     ----------
     children
         A dictionary of child nodes.
+    parent
+        The parent of this node. Can be `None`, in which case this is the root
+        of the tree.
 
     """
 
@@ -304,6 +318,9 @@ class _ListNode:
     ----------
     children
         A list of the node's children.
+    parent
+        The parent of this node. Can be `None`, in which case this is the root
+        of the tree.
 
     """
 
@@ -357,7 +374,14 @@ class _LeafNode:
         This can be any type.
     type_ : str
         A string describing the expected type of this leaf once resolved.
-    nullable : bool
+    parent
+        The parent of this node. Can be `None`, in which case this is the root
+        of the tree.
+    resolution_context: Optional[_ResolutionContext]
+        An instance of _ResolutionContext providing a context for resolution.
+        This is typically not set when the _LeafNode is created. Rather, it
+        is recursively set on all leaf nodes via a tree search.
+    nullable : Optional[bool]
         Whether the value can be None or not. If raw is None this is True, it
         is not parsed (no matter what type_ is). Default: False.
 
@@ -433,8 +457,8 @@ class _LeafNode:
         self._resolved = _PENDING
 
         s = self.raw
-        for reference_path in self.references:
-            s = self._safely(self._interpolate, s, reference_path)
+        if isinstance(s, str):
+            s = self._safely(self._interpolate, s)
 
         if self.nullable and self.raw is None:
             self._resolved = None
@@ -443,23 +467,19 @@ class _LeafNode:
 
         return self._resolved
 
-    def _interpolate(self, s, reference_path):
+    def _interpolate(self, s):
         """Replace a reference keypath with its resolved value.
 
         Parameters
         ----------
         s : str
             A configuration string with references to other values.
-        reference_path : str
-            The reference keypath that will be resolved and replaced.
 
         Returns
         -------
         The interpolated string.
 
         """
-        exploded_path = _explode_dotted_path_string(reference_path)
-
         template = jinja2.Template(
             s, variable_start_string="${", variable_end_string="}"
         )
@@ -480,22 +500,6 @@ class _LeafNode:
 
         return parser(s)
 
-    def _retrieve_from_root(self, exploded_path):
-        try:
-            referred_leaf_node = _get_path(self.root, exploded_path[1:])
-        except KeyError:
-            dotted = ".".join(exploded_path)
-            raise exceptions.Error(f"Cannot resolve: {dotted}")
-
-        return referred_leaf_node.resolve()
-
-    def _retrieve_from_external_variables(self, exploded_path):
-        try:
-            return _get_path(self.resolution_context.external_variables, exploded_path)
-        except KeyError:
-            dotted = ".".join(exploded_path)
-            raise exceptions.Error(f'Cannot find "{dotted}" in external variables.')
-
     def _safely(self, fn, *args):
         try:
             return fn(*args)
@@ -508,34 +512,6 @@ class _ResolutionContext:
 
     external_variables: typing.Mapping
     parsers: typing.Mapping
-
-
-# helpers
-# -------
-
-
-def _explode_dotted_path_string(keypath):
-    """Takes a dotted keypath string like foo.bar.baz and returns a tuple of parts.
-
-    If a keypath component is a number, the corresponding part is an integer.
-
-    """
-
-    def _parse_path_component(c):
-        if c.isnumeric():
-            return int(c)
-        else:
-            return c
-
-    components = keypath.split(".")
-    return tuple(_parse_path_component(c) for c in components)
-
-
-def _get_path(dct, exploded_path):
-    """Retrieve a dictionary entry using an exploded keypath."""
-    if len(exploded_path) == 1:
-        return dct[exploded_path[0]]
-    return _get_path(dct[exploded_path[0]], exploded_path[1:])
 
 
 # validation
