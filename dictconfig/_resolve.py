@@ -22,7 +22,9 @@ the root of their tree or what parsers are available. While this information cou
 supplied when the node is instantiated, it is thought cleaner to keep it separate.
 
 """
+import dataclasses
 import re
+import typing
 
 from . import exceptions
 from . import parsers as _parsers
@@ -99,9 +101,25 @@ def resolve(
         schema_validator(schema)
 
     parsers = _update_parsers(override_parsers)
+    resolution_context = _ResolutionContext(external_variables, parsers)
+
     root = _build_configuration_tree_node(raw_cfg, schema)
+    _provide_context_to_leaf_nodes(root, resolution_context)
+
     resolver = _Resolver(root, external_variables, parsers)
     return root.resolve(resolver)
+
+
+def _provide_context_to_leaf_nodes(node, resolution_context):
+    if isinstance(node, _LeafNode):
+        node.resolution_context = resolution_context
+    elif isinstance(node, _DictNode):
+        for child in node.children.values():
+            _provide_context_to_leaf_nodes(child, resolution_context)
+    elif isinstance(node, _ListNode):
+        for child in node.children:
+            _provide_context_to_leaf_nodes(child, resolution_context)
+
 
 
 def _update_parsers(overrides):
@@ -130,7 +148,7 @@ def _update_parsers(overrides):
 #       nodes.
 
 
-def _build_configuration_tree_node(raw_cfg, schema, keypath=tuple()):
+def _build_configuration_tree_node(raw_cfg, schema, parent=None, keypath=tuple()):
     """Recursively constructs a configuration tree from a raw configuration.
 
     The raw configuration can be a dictionary, list, or a non-container type. In any
@@ -194,19 +212,25 @@ class _DictNode:
 
     """
 
-    def __init__(self, children):
-        self.children = children
+    def __init__(self, children=None, parent=None):
+        self.children = {} if children is None else children
+        self.parent = parent
 
     @classmethod
-    def from_raw(cls, dct, dict_schema, keypath):
+    def from_raw(cls, dct, dict_schema, keypath, parent=None):
         """Construct a _DictNode from a raw configuration dictionary and its schema."""
+        node = cls()
+
+        if parent is not None:
+            node.parent = parent
+
         children = {}
+        _populate_required_keys_children(children, dct, dict_schema, node, keypath)
+        _populate_optional_keys_children(children, dct, dict_schema, node, keypath)
+        _populate_extra_keys_children(children, dct, dict_schema, node, keypath)
 
-        _handle_required_keys(children, dct, dict_schema, keypath)
-        _handle_optional_keys(children, dct, dict_schema, keypath)
-        _handle_extra_keys(children, dct, dict_schema, keypath)
-
-        return cls(children)
+        node.children = children
+        return node
 
     def __getitem__(self, key):
         return self.children[key]
@@ -216,7 +240,7 @@ class _DictNode:
         return {key: child.resolve(resolver) for key, child in self.children.items()}
 
 
-def _handle_required_keys(children, dct, dict_schema, keypath):
+def _populate_required_keys_children(children, dct, dict_schema, parent, keypath):
     required_keys = dict_schema.get("required_keys", {})
 
     for key, key_schema in required_keys.items():
@@ -224,11 +248,11 @@ def _handle_required_keys(children, dct, dict_schema, keypath):
             raise exceptions.ResolutionError("Missing required key.", (keypath + (key,)))
 
         children[key] = _build_configuration_tree_node(
-            dct[key], key_schema, keypath + (key,)
+            dct[key], key_schema, parent, keypath + (key,)
         )
 
 
-def _handle_optional_keys(children, dct, dict_schema, keypath):
+def _populate_optional_keys_children(children, dct, dict_schema, parent, keypath):
     optional_keys = dict_schema.get("optional_keys", {})
 
     for key, key_schema in optional_keys.items():
@@ -242,11 +266,12 @@ def _handle_optional_keys(children, dct, dict_schema, keypath):
             # key is missing and no default was provided
             continue
 
-        children[key] = _build_configuration_tree_node(value, key_schema, keypath + (key,))
+        children[key] = _build_configuration_tree_node(value, key_schema, parent, keypath + (key,))
 
 
-def _handle_extra_keys(children, dct, dict_schema, keypath):
+def _populate_extra_keys_children(children, dct, dict_schema, parent, keypath):
     required_keys = dict_schema.get("required_keys", {})
+
     optional_keys = dict_schema.get("optional_keys", {})
     expected_keys = set(required_keys) | set(optional_keys)
     extra_keys = dct.keys() - expected_keys
@@ -258,7 +283,7 @@ def _handle_extra_keys(children, dct, dict_schema, keypath):
 
     for key in extra_keys:
         children[key] = _build_configuration_tree_node(
-            dct[key], dict_schema["extra_keys_schema"], keypath + (key,)
+            dct[key], dict_schema["extra_keys_schema"], parent, keypath + (key,)
         )
 
 
@@ -272,20 +297,24 @@ class _ListNode:
 
     """
 
-    def __init__(self, children):
-        self.children = children
+    def __init__(self, children=None, parent=None):
+        self.children = {} if children is None else {}
+        self.parent = parent
 
     @classmethod
-    def from_raw(cls, lst, list_schema, keypath):
+    def from_raw(cls, lst, list_schema, keypath, parent=None):
         """Make an internal list node from a raw list and recurse on the children."""
+        node = cls()
+
         child_schema = list_schema["element_schema"]
 
         children = []
         for i, lst_value in enumerate(lst):
-            r = _build_configuration_tree_node(lst_value, child_schema, keypath + (i,))
+            r = _build_configuration_tree_node(lst_value, child_schema, node, keypath + (i,))
             children.append(r)
 
-        return cls(children)
+        node.children = children
+        return node
 
     def __getitem__(self, ix):
         return self.children[ix]
@@ -311,11 +340,13 @@ class _LeafNode:
 
     """
 
-    def __init__(self, raw, type_, keypath, nullable=False):
+    def __init__(self, raw, type_, parent, keypath, resolution_context=None, nullable=False):
         self.raw = raw
         self.type_ = type_
+        self.parent = parent
         self.keypath = keypath
         self.nullable = nullable
+        self.resolution_context = resolution_context
 
         # The resolved value of the leaf node. There are two special values. If
         # this is _UNDISCOVERED, the resolution process has not yet discovered
@@ -325,32 +356,9 @@ class _LeafNode:
         self._resolved = _UNDISCOVERED
 
     @classmethod
-    def from_raw(cls, raw, leaf_schema, keypath, nullable=False):
+    def from_raw(cls, raw, leaf_schema, keypath, nullable=False, parent=None):
         """Create a leaf node from the raw configuration and schema."""
-        return cls(raw, leaf_schema["type"], keypath, nullable)
-
-    @property
-    def references(self):
-        """Return a list of all of the references in the raw value.
-
-        Surrouding whitespace is ignored. That is, ${ self.y } is the same as ${self.y}.
-
-        If the raw value is not a string, there are no references and an empty list is
-        returned.
-
-        Example
-        -------
-
-        >>> leaf = _LeafNode('this is ${self.x} and ${ self.y }', 'string')
-        >>> leaf.references
-        ['self.x', 'self.y']
-
-        """
-        if not isinstance(self.raw, str):
-            return []
-
-        pattern = r"\$\{\s?(.+?)\s?\}"
-        return re.findall(pattern, self.raw)
+        return cls(raw, leaf_schema["type"], parent, keypath, nullable)
 
     def resolve(self, resolver):
         """Resolve the leaf's value by 1) interpolating and 2) parsing.
@@ -385,6 +393,56 @@ class _LeafNode:
             self._resolved = self._safely(resolver.parse, s, self.type_)
         return self._resolved
 
+    @property
+    def references(self):
+        """Return a list of all of the references in the raw value.
+
+        Surrouding whitespace is ignored. That is, ${ self.y } is the same as ${self.y}.
+
+        If the raw value is not a string, there are no references and an empty list is
+        returned.
+
+        Example
+        -------
+
+        >>> leaf = _LeafNode('this is ${self.x} and ${ self.y }', 'string')
+        >>> leaf.references
+        ['self.x', 'self.y']
+
+        """
+        if not isinstance(self.raw, str):
+            return []
+
+        pattern = r"\$\{\s?(.+?)\s?\}"
+        return re.findall(pattern, self.raw)
+
+    def _interpolate(self, s, reference_path):
+        """Replace a reference keypath with its resolved value.
+
+        Parameters
+        ----------
+        s : str
+            A configuration string with references to other values.
+        reference_path : str
+            The reference keypath that will be resolved and replaced.
+
+        Returns
+        -------
+        The interpolated string.
+
+        """
+        exploded_path = _explode_dotted_path_string(reference_path)
+
+        if exploded_path[0] == "self":
+            substitution = self._retrieve_from_root(exploded_path)
+        else:
+            substitution = self._retrieve_from_external_variables(exploded_path)
+
+        pattern = r"\$\{\s?" + reference_path + r"\s?\}"
+        return re.sub(pattern, str(substitution), s)
+
+    
+
 
     def _safely(self, fn, *args):
         try:
@@ -400,6 +458,13 @@ class _LeafNode:
 # representation, and how to parse this string representation into its final
 # resolved value. A resolver manages this by keeping track of the configuration tree's
 # root, the external variables, and the parsers for each type.
+
+
+@dataclasses.dataclass
+class _ResolutionContext:
+
+    external_variables: typing.Mapping
+    parsers: typing.Mapping
 
 
 class _Resolver:
