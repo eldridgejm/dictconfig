@@ -504,7 +504,7 @@ class _LeafNode:
         try:
             return fn(*args)
         except exceptions.Error as exc:
-            raise exceptions.ResolutionError(exc, self.keypath)
+            raise exceptions.ResolutionError(str(exc), self.keypath)
 
 
 @dataclasses.dataclass
