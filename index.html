@@ -104,11 +104,11 @@ logical expressions (e.g., <cite>“True and (False or True)”</cite>), and rel
 <h2>Quick Start<a class="headerlink" href="#quick-start" title="Permalink to this headline"></a></h2>
 <p>Below is an example of what <cite>dictconfig</cite> offers. Suppose we have a YAML file
 containing:</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">x</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">10</span>
-<span class="nt">y</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">32</span>
-<span class="nt">z</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">${self.x} + ${self.y}</span>
-<span class="nt">released</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">${foo.bar}</span>
-<span class="nt">due</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">${self.x} days after ${self.released}</span>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span><span class="w"></span>
+<span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">32</span><span class="w"></span>
+<span class="nt">z</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${self.x} + ${self.y}</span><span class="w"></span>
+<span class="nt">released</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${foo.bar}</span><span class="w"></span>
+<span class="nt">due</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${self.x} days after ${self.released}</span><span class="w"></span>
 </pre></div>
 </div>
 <p>Intuitively, we want the value of <cite>z</cite> to be the sum of <cite>x</cite> and <cite>y</cite> (i.e., 42).
@@ -273,7 +273,7 @@ the start of this section:</p>
 <p>Resolving a configuration is done via the <a class="reference internal" href="#dictconfig.resolve" title="dictconfig.resolve"><code class="xref py py-func docutils literal notranslate"><span class="pre">dictconfig.resolve()</span></code></a> function:</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="dictconfig.resolve">
-<span class="sig-prename descclassname"><span class="pre">dictconfig.</span></span><span class="sig-name descname"><span class="pre">resolve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">raw_cfg</span></em>, <em class="sig-param"><span class="pre">schema</span></em>, <em class="sig-param"><span class="pre">external_variables=None</span></em>, <em class="sig-param"><span class="pre">override_parsers=None</span></em>, <em class="sig-param"><span class="pre">schema_validator=&lt;function</span> <span class="pre">validate_schema&gt;</span></em><span class="sig-paren">)</span><a class="headerlink" href="#dictconfig.resolve" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">dictconfig.</span></span><span class="sig-name descname"><span class="pre">resolve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">raw_cfg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">external_variables=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">override_parsers=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema_validator=&lt;function</span> <span class="pre">validate_schema&gt;</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dictconfig.resolve" title="Permalink to this definition"></a></dt>
 <dd><p>Resolve a raw configuration by interpolating and parsing its entries.</p>
 <p>The raw configuration can be a dictionary, list, or a non-container type;
 resolution will be done recursively. In any case, the provided schema must
