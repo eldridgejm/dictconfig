@@ -1,7 +1,7 @@
 {
   description = "A recursive, resolvable dictionary.";
 
-  inputs.nixpkgs.url = github:NixOS/nixpkgs/20.03;
+  inputs.nixpkgs.url = github:NixOS/nixpkgs/21.11;
 
   outputs = { self, nixpkgs }: 
     let
