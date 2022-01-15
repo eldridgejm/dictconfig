@@ -180,6 +180,11 @@ def smartdatetime(s):
         pass
 
     try:
+        return _parse_datetime_from_explicit(s)
+    except _DateMatchError:
+        pass
+
+    try:
         return _parse_timedelta_before_or_after(s)
     except _DateMatchError:
         pass
@@ -192,14 +197,65 @@ def smartdatetime(s):
     raise exceptions.ParseError(f"Cannot parse into datetime: '{s}'.")
 
 
+def _parse_datetime_from_explicit(s):
+    s, at_time = _parse_and_remove_time(s)
+    try:
+        parsed = datetimelib.datetime.fromisoformat(s)
+    except ValueError:
+        raise _DateMatchError
+
+    if at_time is not None:
+        parsed = datetimelib.datetime.combine(parsed, at_time)
+
+    return parsed
+
+
+def _parse_and_remove_time(s):
+    """Looks for a time at the end of the smart date string.
+    A time is of the form " at 23:59:00"
+    Parameters
+    ----------
+    s : str
+        The smart date string
+    Returns
+    -------
+    str
+        The input, ``s``, but without a time at the end (if there was one in the first
+        place).
+    Union[datetime.time, None]
+        The time, if there was one; otherwise this is ``None``.
+    Raises
+    ------
+    ValidationError
+        If there is a time string, but it's an invalid time (like 55:00:00).
+        
+    """
+    time_pattern = r" at (\d{2}):(\d{2}):(\d{2})$"
+    match = re.search(time_pattern, s, flags=re.IGNORECASE)
+
+    if match:
+        time_raw = match.groups()
+        try:
+            time = datetimelib.time(*[int(x) for x in time_raw])
+        except ValueError:
+            raise ValidationError(f"Invalid time: {time_raw}.")
+        s = re.sub(time_pattern, "", s, flags=re.IGNORECASE)
+    else:
+        time = None
+
+    return s, time
+
+
 def _parse_timedelta_before_or_after(s):
-    """Helper that parses a string of the form "<n> days (before|after) <date(time)>".
+    """Helper that parses a string of the form "<n> days (before|after) <date(time)> [at HH:MM:SS]".
 
     This will always return a datetime object.
 
     """
+    s, at_time = _parse_and_remove_time(s)
+
     match = re.match(
-        r"^(\d+) (day|hour)[s]{0,1} (after|before) (.*)$", s, flags=re.IGNORECASE,
+        r"^(\d+) (day|hour)[s]{0,1} (after|before) (.*)?$", s, flags=re.IGNORECASE,
     )
 
     if not match:
@@ -220,7 +276,12 @@ def _parse_timedelta_before_or_after(s):
 
     delta = datetimelib.timedelta(**timedelta_kwargs)
 
-    return reference_date + delta
+    parsed_date = reference_date + delta
+
+    if at_time is not None:
+        parsed_date = datetimelib.datetime.combine(parsed_date, at_time)
+
+    return parsed_date
 
 
 class _DaysOfTheWeek(enum.IntEnum):
@@ -260,13 +321,15 @@ def _get_day_of_the_week(s):
 
 
 def _parse_first_available_day(s):
-    """Parse a string of the form "first monday before 2021-10-01".
+    """Parse a string of the form "first monday before 2021-10-01 [at HH:MM:SS]".
 
     Always returns a datetime object.
 
     """
     s = s.replace(",", " ")
     s = s.replace(" or ", " ")
+
+    s, at_time = _parse_and_remove_time(s)
 
     match = re.match(r"^first ([\w ]+) (after|before) (.*)$", s, flags=re.IGNORECASE)
 
@@ -285,5 +348,8 @@ def _parse_first_available_day(s):
 
     while cursor_date.weekday() not in day_of_the_week:
         cursor_date += delta
+
+    if at_time is not None:
+        cursor_date = datetimelib.datetime.combine(cursor_date, at_time)
 
     return cursor_date

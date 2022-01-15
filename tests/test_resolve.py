@@ -318,7 +318,7 @@ def test_interpolation_of_keys_with_dots():
     assert result["bar"] == "testing this"
 
 
-def test_interpolation_is_not_confused_by_default_jinja_syntax():
+def test_interpolation_is_not_confused_by_different_jinja_syntax():
     # given
     schema = {
         "type": "dict",
@@ -327,7 +327,7 @@ def test_interpolation_is_not_confused_by_default_jinja_syntax():
 
     dct = {
         "foo": "this",
-        "bar": "testing ${this.foo} {{ that }}",
+        "bar": "testing ${this.foo} $[ that ]",
     }
 
     # when
@@ -335,7 +335,44 @@ def test_interpolation_is_not_confused_by_default_jinja_syntax():
 
     # then
     assert result["foo"] == "this"
-    assert result["bar"] == "testing this {{ that }}"
+    assert result["bar"] == "testing this $[ that ]"
+
+
+
+def test_interpolation_from_deeply_nested_list():
+
+    # given
+    schema = {
+        "type": "dict",
+        "required_keys": {
+            "publication_schema": {
+                "type": "dict",
+                "required_keys": {
+                    "required_artifacts": {
+                        "type": "list",
+                        "element_schema": {"type": "string"}
+                    },
+                    "optional_artifacts": {
+                        "type": "list",
+                        "element_schema": {"type": "string"}
+                    }
+                }
+            }
+        }
+    }
+
+    dct = {
+        "publication_schema": {
+            "required_artifacts": ["foo", "bar", "${this.publication_schema.optional_artifacts.0}"],
+            "optional_artifacts": ["baz"]
+        }
+    }
+
+    # when
+    result = resolve(dct, schema)
+
+    # then
+    result['publication_schema']['required_artifacts'][2] == 'baz'
 
 
 # parsing
