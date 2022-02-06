@@ -273,7 +273,7 @@ the start of this section:</p>
 <p>Resolving a configuration is done via the <a class="reference internal" href="#dictconfig.resolve" title="dictconfig.resolve"><code class="xref py py-func docutils literal notranslate"><span class="pre">dictconfig.resolve()</span></code></a> function:</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="dictconfig.resolve">
-<span class="sig-prename descclassname"><span class="pre">dictconfig.</span></span><span class="sig-name descname"><span class="pre">resolve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">raw_cfg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">external_variables=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">override_parsers=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema_validator=&lt;function</span> <span class="pre">validate_schema&gt;</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dictconfig.resolve" title="Permalink to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">dictconfig.</span></span><span class="sig-name descname"><span class="pre">resolve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">raw_cfg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">external_variables=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">override_parsers=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema_validator=&lt;function</span> <span class="pre">validate_schema&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preserve_type=False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dictconfig.resolve" title="Permalink to this definition"></a></dt>
 <dd><p>Resolve a raw configuration by interpolating and parsing its entries.</p>
 <p>The raw configuration can be a dictionary, list, or a non-container type;
 resolution will be done recursively. In any case, the provided schema must
@@ -291,12 +291,26 @@ the configuration. For example, <code class="code docutils literal notranslate">
 <li><p><strong>override_parsers</strong> – A dictionary mapping leaf type names to parser functions. The parser functions
 should take the raw value (after interpolation) and convert it to the specified
 type. If this is not provided, the default parsers are used.</p></li>
+<li><p><strong>preserve_type</strong> (<em>bool</em><em> (</em><em>default: False</em><em>)</em>) – If False, the return value of this function is a plain dictionary. If this is
+True, however, the return type will be the same as the type of raw_cfg. See
+below for details.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Raises</dt>
 <dd class="field-even"><p><strong>InvalidSchemaError</strong> – If the schema is not valid.</p>
 </dd>
 </dl>
+<p class="rubric">Notes</p>
+<p>Typically, <cite>raw_cfg</cite> will be a plain Python dictionary. Sometimes, however, it may
+be another mapping type that behaves like a <cite>dict</cite>, but has some additional
+functionality. One example is the <cite>ruamel</cite> package which is capable of
+round-tripping yaml, comments and all. To accomplish this, ruamel produces a
+dict-like object which stores the comments internally. If we resolve this dict-like
+object with <code class="code docutils literal notranslate"><span class="pre">preserve_type</span> <span class="pre">=</span> <span class="pre">False</span></code>, then we’ll lose these comments;
+therefore, we should use <code class="code docutils literal notranslate"><span class="pre">preserve_type</span> <span class="pre">=</span> <span class="pre">True</span></code>.</p>
+<p>At present, type preservation is done by constructing the resolved output as normal,
+but then making a deep copy of <cite>raw_cfg</cite> and recursively copying each leaf value
+into this deep copy. Therefore, there is a performance cost.</p>
 </dd></dl>
 
 <p>Resolving a leaf value in a configuration involves two steps: interpolation and
