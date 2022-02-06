@@ -644,7 +644,7 @@ def test_exception_when_cannot_resolve_external_variable():
 # =============
 
 
-def test_leafs_are_parsed_into_expected_types():
+def test_preserve_type():
     class UserDict(dict):
 
         something = 80
