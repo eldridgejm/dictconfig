@@ -19,7 +19,10 @@ def test_raises_if_required_keys_are_missing():
     # given
     schema = {
         "type": "dict",
-        "required_keys": {"foo": {"type": "any"}, "bar": {"type": "any"},},
+        "required_keys": {
+            "foo": {"type": "any"},
+            "bar": {"type": "any"},
+        },
     }
 
     dct = {"foo": 42}
@@ -75,7 +78,12 @@ def test_allows_missing_keys_if_required_is_false():
     # given
     schema = {
         "type": "dict",
-        "optional_keys": {"foo": {"type": "integer"}, "bar": {"type": "integer",},},
+        "optional_keys": {
+            "foo": {"type": "integer"},
+            "bar": {
+                "type": "integer",
+            },
+        },
     }
 
     dct = {"bar": 42}
@@ -128,7 +136,10 @@ def test_interpolation_of_other_dictionary_entries_same_level():
     # given
     schema = {
         "type": "dict",
-        "required_keys": {"foo": {"type": "string"}, "bar": {"type": "string"},},
+        "required_keys": {
+            "foo": {"type": "string"},
+            "bar": {"type": "string"},
+        },
     }
 
     dct = {"foo": "this", "bar": "testing ${this.foo}"}
@@ -146,7 +157,10 @@ def test_interpolation_of_a_high_node_referencing_a_deeper_node():
         "type": "dict",
         "required_keys": {
             "foo": {"type": "string"},
-            "bar": {"type": "dict", "required_keys": {"baz": {"type": "string"}},},
+            "bar": {
+                "type": "dict",
+                "required_keys": {"baz": {"type": "string"}},
+            },
         },
     }
 
@@ -165,7 +179,10 @@ def test_interpolation_of_a_deep_node_referencing_a_higher_node():
         "type": "dict",
         "required_keys": {
             "foo": {"type": "string"},
-            "bar": {"type": "dict", "required_keys": {"baz": {"type": "string"}},},
+            "bar": {
+                "type": "dict",
+                "required_keys": {"baz": {"type": "string"}},
+            },
         },
     }
 
@@ -178,13 +195,17 @@ def test_interpolation_of_a_deep_node_referencing_a_higher_node():
     assert result["foo"] == "testing"
     assert result["bar"]["baz"] == "testing this"
 
+
 def test_interpolation_can_reference_list_elements():
     # given
     schema = {
         "type": "dict",
         "required_keys": {
             "foo": {"type": "string"},
-            "bar": {"type": "list", "element_schema": {"type": "string"},},
+            "bar": {
+                "type": "list",
+                "element_schema": {"type": "string"},
+            },
         },
     }
 
@@ -201,7 +222,9 @@ def test_interpolation_can_use_external_variables():
     # given
     schema = {
         "type": "dict",
-        "required_keys": {"foo": {"type": "string"},},
+        "required_keys": {
+            "foo": {"type": "string"},
+        },
     }
 
     dct = {"foo": "testing ${a.b.c}"}
@@ -244,7 +267,9 @@ def test_raises_if_this_reference_detected():
     # given
     schema = {
         "type": "dict",
-        "required_keys": {"foo": {"type": "string"},},
+        "required_keys": {
+            "foo": {"type": "string"},
+        },
     }
 
     dct = {
@@ -282,7 +307,10 @@ def test_can_use_jinja_methods():
     # given
     schema = {
         "type": "dict",
-        "required_keys": {"foo": {"type": "string"}, "bar": {"type": "string"},},
+        "required_keys": {
+            "foo": {"type": "string"},
+            "bar": {"type": "string"},
+        },
     }
 
     dct = {
@@ -302,7 +330,10 @@ def test_interpolation_of_keys_with_dots():
     # given
     schema = {
         "type": "dict",
-        "required_keys": {"foo.txt": {"type": "string"}, "bar": {"type": "string"},},
+        "required_keys": {
+            "foo.txt": {"type": "string"},
+            "bar": {"type": "string"},
+        },
     }
 
     dct = {
@@ -322,7 +353,10 @@ def test_interpolation_is_not_confused_by_different_jinja_syntax():
     # given
     schema = {
         "type": "dict",
-        "required_keys": {"foo": {"type": "string"}, "bar": {"type": "string"},},
+        "required_keys": {
+            "foo": {"type": "string"},
+            "bar": {"type": "string"},
+        },
     }
 
     dct = {
@@ -338,7 +372,6 @@ def test_interpolation_is_not_confused_by_different_jinja_syntax():
     assert result["bar"] == "testing this $[ that ]"
 
 
-
 def test_interpolation_from_deeply_nested_list():
 
     # given
@@ -350,21 +383,25 @@ def test_interpolation_from_deeply_nested_list():
                 "required_keys": {
                     "required_artifacts": {
                         "type": "list",
-                        "element_schema": {"type": "string"}
+                        "element_schema": {"type": "string"},
                     },
                     "optional_artifacts": {
                         "type": "list",
-                        "element_schema": {"type": "string"}
-                    }
-                }
+                        "element_schema": {"type": "string"},
+                    },
+                },
             }
-        }
+        },
     }
 
     dct = {
         "publication_schema": {
-            "required_artifacts": ["foo", "bar", "${this.publication_schema.optional_artifacts.0}"],
-            "optional_artifacts": ["baz"]
+            "required_artifacts": [
+                "foo",
+                "bar",
+                "${this.publication_schema.optional_artifacts.0}",
+            ],
+            "optional_artifacts": ["baz"],
         }
     }
 
@@ -372,7 +409,7 @@ def test_interpolation_from_deeply_nested_list():
     result = resolve(dct, schema)
 
     # then
-    result['publication_schema']['required_artifacts'][2] == 'baz'
+    result["publication_schema"]["required_artifacts"][2] == "baz"
 
 
 # parsing
@@ -399,7 +436,10 @@ def test_parsing_occurs_after_interpolation():
     # given
     schema = {
         "type": "dict",
-        "required_keys": {"foo": {"type": "integer"}, "bar": {"type": "integer"},},
+        "required_keys": {
+            "foo": {"type": "integer"},
+            "bar": {"type": "integer"},
+        },
     }
 
     dct = {"foo": "42", "bar": "${this.foo}"}
@@ -540,7 +580,10 @@ def test_exception_has_correct_path_with_missing_key_in_nested_dict():
     schema = {
         "type": "dict",
         "required_keys": {
-            "foo": {"type": "dict", "required_keys": {"bar": {"type": "any"}},},
+            "foo": {
+                "type": "dict",
+                "required_keys": {"bar": {"type": "any"}},
+            },
         },
     }
 
@@ -550,7 +593,10 @@ def test_exception_has_correct_path_with_missing_key_in_nested_dict():
     with raises(exceptions.ResolutionError) as excinfo:
         resolve(dct, schema)
 
-    assert excinfo.value.keypath == ("foo", "bar",)
+    assert excinfo.value.keypath == (
+        "foo",
+        "bar",
+    )
 
 
 def test_exception_has_correct_path_with_missing_key_in_nested_dict_within_list():
@@ -559,11 +605,20 @@ def test_exception_has_correct_path_with_missing_key_in_nested_dict_within_list(
         "type": "list",
         "element_schema": {
             "type": "dict",
-            "required_keys": {"foo": {"type": "integer",},},
+            "required_keys": {
+                "foo": {
+                    "type": "integer",
+                },
+            },
         },
     }
 
-    lst = [{"foo": 10,}, {"bar": 42}]
+    lst = [
+        {
+            "foo": 10,
+        },
+        {"bar": 42},
+    ]
 
     # when
     with raises(exceptions.ResolutionError) as excinfo:
@@ -583,3 +638,27 @@ def test_exception_when_cannot_resolve_external_variable():
         resolve(dct, schema)
 
     assert excinfo.value.keypath == ("foo",)
+
+
+# preserve_type
+# =============
+
+
+def test_leafs_are_parsed_into_expected_types():
+    class UserDict(dict):
+
+        something = 80
+
+    # given
+    schema = {
+        "type": "dict",
+        "required_keys": {"foo": {"type": "integer"}},
+    }
+
+    dct = UserDict({"foo": "42"})
+
+    # when
+    result = resolve(dct, schema, preserve_type=True)
+
+    # then
+    assert result.something == 80

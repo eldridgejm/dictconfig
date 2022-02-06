@@ -25,6 +25,7 @@ can be referenced using the standard Jinja dot notation; for example:
     ${ this.foo.bar.baz }
 
 """
+import copy
 import dataclasses
 import re
 import typing
@@ -64,6 +65,7 @@ def resolve(
     external_variables=None,
     override_parsers=None,
     schema_validator=validate_schema,
+    preserve_type=False,
 ):
     """Resolve a raw configuration by interpolating and parsing its entries.
 
@@ -87,11 +89,29 @@ def resolve(
         A dictionary mapping leaf type names to parser functions. The parser functions
         should take the raw value (after interpolation) and convert it to the specified
         type. If this is not provided, the default parsers are used.
+    preserve_type : bool (default: False)
+        If False, the return value of this function is a plain dictionary. If this is
+        True, however, the return type will be the same as the type of raw_cfg. See
+        below for details.
 
     Raises
     ------
     InvalidSchemaError
         If the schema is not valid.
+
+    Notes
+    -----
+    Typically, `raw_cfg` will be a plain Python dictionary. Sometimes, however, it may
+    be another mapping type that behaves like a `dict`, but has some additional
+    functionality. One example is the `ruamel` package which is capable of
+    round-tripping yaml, comments and all. To accomplish this, ruamel produces a
+    dict-like object which stores the comments internally. If we resolve this dict-like
+    object with :code:`preserve_type = False`, then we'll lose these comments;
+    therefore, we should use :code:`preserve_type = True`.
+
+    At present, type preservation is done by constructing the resolved output as normal,
+    but then making a deep copy of `raw_cfg` and recursively copying each leaf value
+    into this deep copy. Therefore, there is a performance cost.
 
     """
     if external_variables is None:
@@ -111,7 +131,38 @@ def resolve(
     root = _build_configuration_tree_node(raw_cfg, schema)
     _provide_context_to_leaf_nodes(root, resolution_context)
 
-    return root.resolve()
+    resolved = root.resolve()
+
+    if not preserve_type:
+        return resolved
+    else:
+        output = copy.deepcopy(raw_cfg)
+        _copy_into(output, resolved)
+        return output
+
+
+def _is_leaf(x):
+    return not isinstance(x, dict) and not isinstance(x, list)
+
+
+def _copy_into(dst, src):
+    """Recursively copy the leaf values from src to dst.
+
+    Used when preserve_type = True in resolve()
+    """
+    if isinstance(dst, dict):
+        keys = dst.keys()
+    elif isinstance(dst, list):
+        keys = range(len(dst))
+    else:
+        raise ValueError("no!")
+
+    for key in keys:
+        x = src[key]
+        if _is_leaf(x):
+            dst[key] = src[key]
+        else:
+            _copy_into(dst[key], src[key])
 
 
 def _provide_context_to_leaf_nodes(node, resolution_context):
@@ -127,7 +178,7 @@ def _provide_context_to_leaf_nodes(node, resolution_context):
 
 
 def _update_parsers(overrides):
-    """Override some of the default parsers. 
+    """Override some of the default parsers.
 
     Returns a dictionary of all parsers."""
     parsers = DEFAULT_PARSERS.copy()
