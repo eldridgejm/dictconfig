@@ -28,7 +28,7 @@ jobs:
         run: pip install .
 
       - name: Build the docs
-        run: cd docs && make html && make doctests
+        run: cd docs && make html && make doctest
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
