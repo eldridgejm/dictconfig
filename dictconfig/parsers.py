@@ -1,6 +1,9 @@
 """
 A parser is a function that accepts a raw value -- often, but not necessarily a
 string -- and returns a resolved value with the appropriate type.
+
+.. testsetup::
+
 """
 import ast
 import enum
@@ -31,6 +34,7 @@ def arithmetic(type_):
     Example
     -------
 
+    >>> from dictconfig.parsers import arithmetic
     >>> parser = arithmetic(int)
     >>> parser('(7 + 3) / 5')
     2
@@ -78,6 +82,7 @@ def logic(s):
     Example
     -------
 
+    >>> from dictconfig.parsers import logic
     >>> logic('True and (False or True)')
     True
 
@@ -115,8 +120,8 @@ def smartdate(s):
 
     Input strings can be in one of three forms:
 
-        1. Dates in ISO format, e.g.: "2021-10-1".
-        2. Relative dates of the form :code:`"<n> days (before|after) <ISO date>"`,
+        1. Dates in ISO format, e.g.: "2021-10-01".
+        2. Relative dates of the form :code:`"<n> day(s) (before|after) <ISO date>"`,
            e.g., "3 days before 2021-10-10"
         3. Relative dates of the form :code:`"first
            <day_of_week>[,<day_of_week>,...,<day_of_week>] (before|after) <ISO date>"`, 
@@ -125,11 +130,12 @@ def smartdate(s):
     Example
     -------
 
-    >>> smartdate('2021-10-1')
+    >>> from dictconfig.parsers import smartdate
+    >>> smartdate('2021-10-01')
     datetime.date(2021, 10, 1)
-    >>> smartdate('3 days after 2021-10-1')
-    datetime.date(2021, 10, 4)
-    >>> smartdate('3 days before 2021-10-5')
+    >>> smartdate('1 day after 2021-10-01')
+    datetime.date(2021, 10, 2)
+    >>> smartdate('3 days before 2021-10-05')
     datetime.date(2021, 10, 2)
     >>> smartdate('first monday after 2021-09-10')
     datetime.date(2021, 9, 13)

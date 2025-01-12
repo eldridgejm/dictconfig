@@ -1,127 +1,391 @@
-Welcome to dictconfig's documentation!
-======================================
+dictconfig
+==========
+
+`dictconfig` is a Python library that makes it more convenient to use dictionaries
+for program configuration.
+
+The three main features of `dictconfig` are:
+
+- **Validation**: Dictionaries can be validated to ensure that required keys
+  are provided and their values have the right type, and missing optional
+  values are replaced with defaults.
+- **Interpolation**: Configuration values can reference other parts of the
+  configuration, or even external variables supplied by the user. This allows
+  for configuration following the DRY ("Don't Repeat Yourself") principle.
+- **Calculations**: Configuration values can be computed from expressions.
+  Built-in parsers are provided to do simple arithmetic on numbers and dates,
+  as well as logical operations on booleans. Custom parsers can be added to
+  handle other types.
+
+.. testsetup:: *
+
+   import datetime
+   import dictconfig
+   from pprint import pprint
+
+Demo
+====
+
+The following toy example demonstrates the core features of `dictconfig`. Consider
+the YAML configuration file below:
+
+.. code:: yaml
+
+   release-date: 2025-01-10
+   due: 7 days after ${this.release-date}
+   x: 10
+   y: 3
+   z: 2 * ${this.x} + ${this.y}
+
+Notice that some of the fields in this configuration file contain references to
+other fields and are calculated based on these references. For example, we'd
+like the eventual value of `due` to be ``2025-01-17`` (i.e., 7 days after the
+value of ``release-date``).
+
+Of course, if we read this YAML into a Python dictionary using any standard
+YAML loader, the result will be the below dictionary, where the values of each
+field are simply the literal values from the YAML file:
+
+.. code:: python
+
+   {
+       'release-date': '2025-01-10',
+       'due': '7 days after ${this.release-date}',
+       'x': 10,
+       'y': 3,
+       'z': '2 * ${this.x} + ${this.y}'
+    }
+
+
+`dictconfig` takes this dictionary as input and "resolves" references and calculated
+values to obtain the following dictionary:
+
+.. code:: python
+
+   {
+       'release-date': datetime.date(2025, 1, 10),
+       'due': datetime.date(2025, 1, 17),
+       'x': 10,
+       'y': 3,
+       'z': 23
+   }
+
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
-A straightforward way of configuring a piece of Python software is to read
-configuration settings from a file (usually JSON or YAML) into a Python
-dictionary. While this is convenient, this approach has some limitations;
-namely, fields within a JSON or YAML file cannot make use of variables, nor can
-they reference one another. Furthermore, it's often desirable to perform some
-basic validation of the configuration settings to ensure that all of the
-required values are provided and to fill in missing values with suitable
-defaults.
-
-`dictconfig` is a Python package that aims to support this use case. It provides
-the following features:
-
-1. **Basic Validation**: Check that require values are provided and fill in
-   missing optional values with defaults.
-2. **Interpolation** Configuration values can reference other parts of the configuration,
-   or even external variables supplied by the program reading the
-   configuration.
-3. **Domain-specific Parsing**: Custom parsers can be provided to convert
-   configuration options to Python types in a domain-specific way. `dictconfig`
-   comes with parsers for interpreting arithmetic expressions (e.g., `"(4 + 6) / 2"`),
-   logical expressions (e.g., `"True and (False or True)"`), and relative datetimes
-   (e.g., `"7 days after 2021-10-10"`).
-
 Quick Start
------------
+===========
 
-Below is an example of what `dictconfig` offers. Suppose we have a YAML file
-containing:
+There are three steps to reading a configuration file with `dictconfig`:
 
-.. code:: yaml
+1. Read the configuration file into a Python dictionary (e.g., with PyYAML or the ``json`` module).
+2. Define a schema for the configuration.
+3. Call :func:`dictconfig.resolve()` to resolve the configuration.
 
-   x: 10
-   y: 32
-   z: ${self.x} + ${self.y}
-   released: ${foo.bar}
-   due: ${self.x} days after ${self.released}
+Step 1: Read the configuration file into a Python dictionary
+------------------------------------------------------------
 
-Intuitively, we want the value of `z` to be the sum of `x` and `y` (i.e., 42).
-In this example, :code:`${foo.bar}` refers to an "external variable"
-provided by the software that reads the config.  Apparently, we want the value
-of `due` to resolve to ten days after this release date.
+If your program configuration is stored in a file (such as a YAML, JSON, or
+TOML file), the first step is to read that configuration into a Python
+dictionary. `dictconfig` is agnostic to the configration file format, and it
+does not provide any file-reading functionality. Instead, you should use
+third-party libraries like PyYAML, the `json` module, or the `toml` module to
+read configuration files.
 
-However, if we read this YAML into a Python dictionary :code:`dct` using any
-standard YAML loader, the value of `z` will simply be the string above; it will
-*not* be the number 42. Likewise, the value of the `released` and `due` fields
-will not be as desired.
+One note regarding YAML files: YAML parsers that stick to older versions of the
+specification (somewhat infamously) try to guess user intent when parsing
+strings. This leads to things like the "Norway problem" where Norway's 2-letter
+country code ("NO") is parsed into the boolean `False`. Avoiding these issues
+is actually quite simple: configure your YAML parser to read all values as
+strings and let `dictconfig` handle the type conversion.
 
-With `dictconfig`'s interpolation and reference features, however, we can resolve
-the configuration above into what we expect. First, we must specify a *schema*.
-A *schema* is a Python dictionary that tells `dictconfig` what types to expect
-for each configuration option. Here is a schema for this configuration file
-that says that the keys `x`, `y`, and `z` are all integers and that `released`
-and `due` are dates:
+Step 2: Define a Schema
+-----------------------
 
-.. code:: python
+In order to validate a configuration and resolve its values, `dictconfig` needs
+to know what keys to expect and the types of their values. This is done by
+defining a schema. A schema is a Python dictionary that describes the expected
+structure of the configuration.
+
+A full description of the schema format can be found in the `Schemata`_ section
+below, however, a few simple examples are probably enough to help you get started.
+
+Step 3: Resolve the configuration
+---------------------------------
+
+Call :func:`dictconfig.resolve()` to resolve the configuration. This function
+takes the configuration dictionary, the schema, and any external variables that
+the configuration may reference. It returns the resolved configuration.
+
+Examples
+========
+
+Example 1: Revisting the demo with external variables
+-----------------------------------------------------
+
+This example extends the demo to show how external variables (variables that
+aren't defined in the configuration file, but which are provided and the time
+of resolution) can be used in configuration values. The configuration file is
+the same as before, but now we have an external variable `today` that is used
+in the calculation of the `tomorrow` field:
+
+.. testcode::
 
     schema = {
         "type": "dict",
         "required_keys": {
-            "x": {"value_schema": {"type": "integer"}},
-            "y": {"value_schema": {"type": "integer"}},
-            "z": {"value_schema": {"type": "integer"}},
-            "released": {"value_schema": {"type": "date"}},
-            "due": {"value_schema": {"type": "date"},
+            "x": {"type": "integer"},
+            "y": {"type": "integer"},
+            "z": {"type": "integer"},
+            "release_date": {"type": "date"},
+            "due": {"type": "date"},
+            "tomorrow": {"type": "date"},
         }
     }
 
-As can be seen from above, a schema is a nested dictionary describing which
-configuration keys are required and what their types should be. For a more
-precise definition of a schema, see the `Schemata`_ section below.
+    raw_configuration = {
+        'release_date': '2025-01-10',
+        'due': '7 days after ${this.release_date}',
+        'tomorrow': '1 day after ${today}',
+        'x': 10,
+        'y': 3,
+        'z': '2 * ${this.x} + ${this.y}'
+    }
 
-Next, we call :code:`dictconfig.resolve()` to *resolve* the configuration. We provide
-a dictionary of external variables that can be resolved.
+    resolved_configuration = dictconfig.resolve(
+        raw_configuration,
+        schema,
+        external_variables={"today": datetime.date(2025, 1, 7)}
+    )
+
+    pprint(resolved_configuration)
+
+The result is:
+
+.. testoutput::
+
+    {'due': datetime.date(2025, 1, 17),
+     'release_date': datetime.date(2025, 1, 10),
+     'tomorrow': datetime.date(2025, 1, 8),
+     'x': 10,
+     'y': 3,
+     'z': 23}
+
+A usecase of this feature is to allow configurations files to reference values
+from *other* configuration files. This is done by reading the other
+configuration files into dictionaries and passing them as external variables to
+the `resolve` function.
+
+Example 2: Missing required keys
+--------------------------------
+
+Consider the example below, which is the same as the previous example, but where a
+required key ("z") is missing. :func:`dictconfig.resolve` will catch this when it
+does its validation and will raise a :class:`dictconfig.exceptions.ResolutionError`:
+
+.. testcode::
+
+    schema = {
+        "type": "dict",
+        "required_keys": {
+            "x": {"type": "integer"},
+            "y": {"type": "integer"},
+            "z": {"type": "integer"},
+            "release_date": {"type": "date"},
+            "due": {"type": "date"},
+        }
+    }
+
+    raw_configuration = {
+        'release_date': '2025-01-10',
+        'due': '7 days after ${this.release_date}',
+        'x': 10,
+        'y': 3,
+    }
+
+    try:
+        resolved_configuration = dictconfig.resolve(raw_configuration, schema)
+    except dictconfig.exceptions.ResolutionError as e:
+        pprint(str(e))
+
+The error message is:
+
+.. testoutput::
+
+    'Cannot resolve keypath: "z": Missing required key.'
+
+Example 3: Schema with optional keys and default values
+-------------------------------------------------------
+
+Suppose some keys are not required and should have default values if they are
+missing. In the example below, the key "x" is optional and has a default value
+of 10:
+
+.. testcode::
+
+    schema = {
+        "type": "dict",
+        "required_keys": {
+            "y": {"type": "integer"},
+            "z": {"type": "integer"},
+        },
+        "optional_keys": {
+            "x": {"type": "integer", "default": 10},
+        }
+    }
+
+    raw_configuration = {
+        'y': 3,
+        'z': '2 * ${this.x} + ${this.y}'
+    }
+
+    resolved_configuration = dictconfig.resolve(raw_configuration, schema)
+    pprint(resolved_configuration)
+
+The result is:
+
+.. testoutput::
+
+    {'x': 10, 'y': 3, 'z': 23}
 
 
-.. code:: python
 
-   >>> import dictconfig
-   >>> external_variables = {
-       'foo': {'bar': '2021-10-01', 'baz': None},
-       'bar': 42
-   }
-   >>> dictconfig.resolve(dct, schema, external_variables=external_variables)
-   {
-       "x": 10,
-       "y": 32,
-       "z": 42,
-       "released": datetime.date(2021, 10, 1),
-       "due": datetime.date(2021, 10, 11),
-   }
+Example 4: Lists
+----------------
 
-During resolution, the values of `x` and `y` are looked up and interpolated
-into the definition of `z`, resulting in the string `10 + 32`. The schema tells
-`dictconfig` that the result should be an integer, so an attempt is made to
-convert this string to an `int`. The default string-to-int parser in
-`dictconfig` is capable of evaluating basic arithmetic expressions, and
-therefore produces the value of 42.
+Despite its name, `dictconfig` can be used to validate and resolve more than
+just dictionaries. The schema below describes a list of dictionaries, each dictionary
+containing a string key `name` and an integer key `age`:
 
-Likewise, the reference to :code:`${foo.bar}` is resolved from the external variables
-and converted to a date as per the schema. The `due` field is resolved by referring to
-the `released` field. The default date parser is smart enough to handle
-relative dates written as above. See the `Parsers`_ section below for more
-information on the parsers.
+.. testcode::
 
-Usage
------
+    schema = {
+        "type": "list",
+        "element_schema": {
+            "type": "dict",
+            "required_keys": {
+                "name": {"type": "string"},
+                "age": {"type": "integer"},
+            }
+        }
+    }
 
-This section describes the usage of the package in greater detail, starting
-with the creation of schemata.
+    raw_configuration = [
+        {"name": "Alice", "age": 30},
+        {"name": "Bob", "age": 25},
+        {"name": "Charlie", "age": 35},
+    ]
+
+    resolved_configuration = dictconfig.resolve(raw_configuration, schema)
+    pprint(resolved_configuration)
+
+The result is:
+
+.. testoutput::
+
+   [{'age': 30, 'name': 'Alice'},
+    {'age': 25, 'name': 'Bob'},
+    {'age': 35, 'name': 'Charlie'}]
+
+
+Example 5: Nested dictionaries
+------------------------------
+
+In the previous example, the ``element_schema`` key was used to describe the
+schema for a list of dictionaries. A similar approach can be taken to write a
+schema for nested dictionaries. The below example uses a schema describing a
+dictionary with top-level keys "number" and "videos", where the value of
+"videos" is a list of dictionaries, each containing a string key `title` and an
+integer key `url`:
+
+.. testcode::
+
+    schema = {
+        "type": "dict",
+        "required_keys": {
+            "number": {"type": "integer"},
+            "videos": {
+                "type": "list",
+                "element_schema": {
+                    "type": "dict",
+                    "required_keys": {
+                        "title": {"type": "string"},
+                        "url": {"type": "integer"},
+                    }
+                }
+            }
+        }
+    }
+
+    raw_configuration = {
+        "number": 3,
+        "videos": [
+            {"title": "Video 1", "url": 1},
+            {"title": "Video 2", "url": 2},
+            {"title": "Video 3", "url": 3},
+        ]
+    }
+
+    resolved_configuration = dictconfig.resolve(raw_configuration, schema)
+    pprint(resolved_configuration)
+
+The result is:
+
+.. testoutput::
+
+    {'number': 3,
+     'videos': [{'title': 'Video 1', 'url': 1},
+                {'title': 'Video 2', 'url': 2},
+                {'title': 'Video 3', 'url': 3}]}
+
+Example 6: Using `jinja2` features during interpolation
+-------------------------------------------------------
+
+`dictconfig` uses the `jinja2` templating engine for interpolation. This means
+that you can use all the features of `jinja2` in your configuration files. For
+example, `jinja2` allows for a kind of ternaly operator which can be used to
+dynamically set the value of a key based on a condition.
+
+.. testcode::
+
+    schema = {
+        "type": "dict",
+        "required_keys": {
+            "x": {"type": "integer"},
+            "y": {"type": "integer"},
+            "z": {"type": "integer"},
+        }
+    }
+
+    raw_configuration = {
+        'x': 10,
+        'y': 3,
+        'z': '${ this.x if this.x > this.y else this.y }'
+    }
+
+    resolved_configuration = dictconfig.resolve(raw_configuration, schema)
+    pprint(resolved_configuration)
+
+The result is:
+
+.. testoutput::
+
+    {'x': 10, 'y': 3, 'z': 10}
+
+
 
 Schemata
-~~~~~~~~
+========
 
 It is necessary to define a schema in order to specify the types of
-configuration values.  But before describing the grammar of a schema, it will
-be useful to reconceptualize the configuration as a tree.  For example, take
-the following dictionary of options:
+configuration values. This section defines the formal grammar of a schema, but you
+may be able to get a start by copying and modifying the examples above.
+
+Before describing the grammar of a schema, it will be useful to reframe a
+configuration dictionary as a tree.  For example, take the following dictionary
+of options:
 
 .. code:: python
 
@@ -183,7 +447,7 @@ configuration tree.  The "grammar" of a schema is roughly as follows:
         | <ANY_SCHEMA_WITH_DEFAULT>
     )
 
-A <SCHEMA_WITH_DEFAULT> is like its corresponding schema, but with an added
+A ``<SCHEMA_WITH_DEFAULT>`` is like its corresponding schema, but with an added
 "default" key that supplies a default value.
 
 A type of "any" denotes that the configuration option will be left as-is with
@@ -192,37 +456,8 @@ no parsing, however, interpolation still takes place.
 Optionally, a leaf value can be "nullable", meaning that `None` is a valid
 type. By default, the leaf values are not nullable.
 
-Here is an example of a valid schema for the configuration dictionary from
-the start of this section:
-
-.. code:: python
-
-    {
-        'type': 'dict',
-        'required_keys': {
-            'title': {
-                'value_schema': {'type': 'string'},
-            },
-            'release': {
-                'value_schema': {
-                    'type': 'dict',
-                    'required_keys': {
-                        'date': {'value_schema': {'type': 'date'}},
-                        'via': {'value_schema': {'type': 'string'}},
-                    }
-                },
-            },
-            'authors': {
-                'value_schema': {
-                    'type': 'list',
-                    'element_schema': {'type': 'string'}
-                }
-            }
-        }
-    }
-
-Resolving Configurations
-~~~~~~~~~~~~~~~~~~~~~~~~
+``resolve()``
+=============
 
 Resolving a configuration is done via the :func:`dictconfig.resolve` function:
 
@@ -245,7 +480,7 @@ In summary, the resolution of leaf nodes occurs via recursive string interpolati
 followed by parsing into the final type.
 
 Parsers
-~~~~~~~
+=======
 
 .. currentmodule:: dictconfig.parsers
 
@@ -260,6 +495,10 @@ The default parsers are as follows:
 - "boolean": The :func:`logic` parser.
 - "date": The :func:`smartdate` parser.
 - "datetime": The :func:`smartdatetime` parser.
+
+Custom parsers can be added by defining a function that accepts a string and
+returns the resolved value. The function should then be passed to the
+:func:`dictconfig.resolve` function in the ``override_parsers`` argument.
 
 All available parsers in :mod:`dictconfig.parsers` are shown below:
 

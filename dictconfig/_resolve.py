@@ -74,10 +74,50 @@ def resolve(
     match the type of the raw configuration; for example, if the raw
     configuration is a dictionary, the schema must be a dict schema.
 
+    Default parsers are provided which attempt to convert raw values to the
+    specified types. They are:
+
+        - "integer": :func:`dictconfig.parsers.arithmetic` with type `int`
+        - "float": :func:`dictconfig.parsers.arithmetic` with type `float`
+        - "string": n/a.
+        - "boolean": :func:`dictconfig.parsers.logic`
+        - "date": :func:`dictconfig.parsers.smartdate`
+        - "datetime": :func:`dictconfig.parsers.smartdatetime`
+
+    These parsers provide "smart" behavior, allowing values to be expressed in
+    a variety of formats. They can be overridden by providing a dictionary of
+    parsers to `override_parsers`.
+
     A dictionary of external variables can be provided; these will be available
-    at interpolation time. A special variable, "this", is reserved and cannot
+    at interpolation time. A special key, ``this``, is reserved and cannot
     be used as an external variable. It refers to the root of the resolved
     configuration.
+
+    This function uses the `jinja2` template engine for interpolation. This means
+    that many powerful `Jinja2` features can be used. For example, a `Jinja2` supports
+    a ternary operator, so dictionaries can contain expressions like the following:"
+
+    .. code-block:: python
+
+        {
+            'x': 10,
+            'y': 3,
+            'z': '${ this.x if this.x > this.y else this.y }'
+        }
+
+    Typically, `raw_cfg` will be a plain Python dictionary. Sometimes, however,
+    it may be another mapping type that behaves like a `dict`, but has some
+    additional functionality. One example is the `ruamel` package which is
+    capable of round-tripping yaml, comments and all. To accomplish this,
+    ruamel produces a dict-like object which stores the comments internally. If
+    we resolve this dict-like object with :code:`preserve_type = False`, then
+    we'll lose these comments; therefore, we should use :code:`preserve_type =
+    True`.
+
+    At present, type preservation is done by constructing the resolved output
+    as normal, but then making a deep copy of `raw_cfg` and recursively copying
+    each leaf value into this deep copy. Therefore, there is a performance
+    cost.
 
     Parameters
     ----------
@@ -104,20 +144,9 @@ def resolve(
     ------
     InvalidSchemaError
         If the schema is not valid.
-
-    Notes
-    -----
-    Typically, `raw_cfg` will be a plain Python dictionary. Sometimes, however, it may
-    be another mapping type that behaves like a `dict`, but has some additional
-    functionality. One example is the `ruamel` package which is capable of
-    round-tripping yaml, comments and all. To accomplish this, ruamel produces a
-    dict-like object which stores the comments internally. If we resolve this dict-like
-    object with :code:`preserve_type = False`, then we'll lose these comments;
-    therefore, we should use :code:`preserve_type = True`.
-
-    At present, type preservation is done by constructing the resolved output as normal,
-    but then making a deep copy of `raw_cfg` and recursively copying each leaf value
-    into this deep copy. Therefore, there is a performance cost.
+    ResolutionError
+        If the configuration does not match the schema, if there is a circular
+        reference, or there is some other issue with the configuration itself.
 
     """
     if external_variables is None:
