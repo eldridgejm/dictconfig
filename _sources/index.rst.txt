@@ -12,7 +12,7 @@ The three main features of `dictconfig` are:
 - **Interpolation**: Configuration values can reference other parts of the
   configuration, or even external variables supplied by the user. This allows
   for configuration following the DRY ("Don't Repeat Yourself") principle.
-- **Calculations**: Configuration values can be computed from expressions.
+- **Calculation**: Configuration values can be computed from expressions.
   Built-in parsers are provided to do simple arithmetic on numbers and dates,
   as well as logical operations on booleans. Custom parsers can be added to
   handle other types.
