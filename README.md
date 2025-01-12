@@ -1,23 +1,68 @@
 dictconfig
 ==========
 
-A straightforward way of configuring a piece of Python software is to read
-configuration settings from a file (usually JSON or YAML) into a Python
-dictionary. While this is convenient, this approach has some limitations;
-namely, fields within a JSON or YAML file cannot make use of variables, nor can
-they reference one another.
 
-`dictconfig` is a Python package that aims to ease these limitations by
-supporting:
+`dictconfig` is a Python library that makes it more convenient to use dictionaries
+for program configuration.
 
-1. **External Variables**: Configuration values can reference external
-   variables supplied by the program reading the configuration.
-2. **Internal References**: The configuration can reference other settings
-   within the same configuration.
-3. **Domain-specific languages**: Custom parsers can be provided to convert
-   configuration options to Python types in a domain-specific way. `dateconfig`
-   comes with parsers for interpreting arithmetic expressions (e.g., `"(4 + 6) / 2"`),
-   logical expressions (e.g., `"True and (False or True)"`), and relative datetimes
-   (e.g., `"7 days after 2021-10-10"`).
+The three main features of `dictconfig` are:
+
+- **Validation**: Dictionaries can be validated to ensure that required keys
+  are provided and their values have the right type, and missing optional
+  values are replaced with defaults.
+- **Interpolation**: Configuration values can reference other parts of the
+  configuration, or even external variables supplied by the user. This allows
+  for configuration following the DRY ("Don't Repeat Yourself") principle.
+- **Calculations**: Configuration values can be computed from expressions.
+  Built-in parsers are provided to do simple arithmetic on numbers and dates,
+  as well as logical operations on booleans. Custom parsers can be added to
+  handle other types.
 
 See the full docs here: https://eldridgejm.github.io/dictconfig/
+
+Demo
+----
+
+The following toy example demonstrates the core features of `dictconfig`. Consider
+the YAML configuration file below:
+
+```yaml
+release-date: 2025-01-10
+due: 7 days after ${this.release-date}
+x: 10
+y: 3
+z: 2 * ${this.x} + ${this.y}
+```
+
+Notice that some of the fields in this configuration file contain references to
+other fields and are calculated based on these references. For example, we'd
+like the eventual value of `due` to be `2025-01-17` (i.e., 7 days after the
+value of `release-date`).
+
+Of course, if we read this YAML into a Python dictionary using any standard
+YAML loader, the result will be the below dictionary, where the values of each
+field are simply the literal values from the YAML file:
+
+
+```
+{
+   'release-date': '2025-01-10',
+   'due': '7 days after ${this.release-date}',
+   'x': 10,
+   'y': 3,
+   'z': '2 * ${this.x} + ${this.y}'
+}
+```
+
+`dictconfig` takes this dictionary as input and "resolves" references and calculated
+values to obtain the following dictionary:
+
+```
+{
+   'release-date': datetime.date(2025, 1, 10),
+   'due': datetime.date(2025, 1, 17),
+   'x': 10,
+   'y': 3,
+   'z': 23
+}
+```
