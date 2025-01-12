@@ -74,6 +74,11 @@ def resolve(
     match the type of the raw configuration; for example, if the raw
     configuration is a dictionary, the schema must be a dict schema.
 
+    A dictionary of external variables can be provided; these will be available
+    at interpolation time. A special variable, "this", is reserved and cannot
+    be used as an external variable. It refers to the root of the resolved
+    configuration.
+
     Parameters
     ----------
     raw_cfg
@@ -84,7 +89,8 @@ def resolve(
         A (nested) dictionary of external variables that may be interpolated into
         the raw configuration. External variables can be referred to by dotted keypaths in
         the configuration. For example, :code:`${foo.bar.baz}` will reference the value
-        42 in the dictionary :code:`{'foo': {'bar': {'baz': 42}}}`.
+        42 in the dictionary :code:`{'foo': {'bar': {'baz': 42}}}`. Cannot contain a key
+        named "this".
     override_parsers
         A dictionary mapping leaf type names to parser functions. The parser functions
         should take the raw value (after interpolation) and convert it to the specified
@@ -117,9 +123,9 @@ def resolve(
     if external_variables is None:
         external_variables = {}
 
-    if "self" in external_variables:
+    if "this" in external_variables:
         raise ValueError(
-            'external_variables cannot contain a "self" key; it is reserved.'
+            'external_variables cannot contain a "this" key; it is reserved.'
         )
 
     if schema_validator is not None:
@@ -155,7 +161,7 @@ def _copy_into(dst, src):
     elif isinstance(dst, list):
         keys = range(len(dst))
     else:
-        raise ValueError("no!")
+        raise ValueError("The destination must be a dictionary or list.")
 
     for key in keys:
         x = src[key]
