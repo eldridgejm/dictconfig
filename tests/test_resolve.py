@@ -218,6 +218,10 @@ def test_interpolation_can_reference_list_elements():
     assert result["foo"] == "testing that"
 
 
+def test_interpolation_can_reference_entire_list():
+    pass
+
+
 def test_interpolation_can_use_external_variables():
     # given
     schema = {
