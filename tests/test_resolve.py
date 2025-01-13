@@ -219,7 +219,47 @@ def test_interpolation_can_reference_list_elements():
 
 
 def test_interpolation_can_reference_entire_list():
-    pass
+    # given
+    schema = {
+        "type": "dict",
+        "required_keys": {
+            "foo": {"type": "list", "element_schema": {"type": "string"}},
+            "bar": {"type": "list", "element_schema": {"type": "string"}},
+        },
+    }
+
+    dct = {
+        "foo": ["this", "that", "the other"],
+        "bar": "${this.foo}",
+    }
+
+    # when
+    result = resolve(dct, schema)
+
+    # then
+    assert result["bar"] == ["this", "that", "the other"]
+
+
+def test_interpolation_can_reference_entire_dictionary():
+    # given
+    schema = {
+        "type": "dict",
+        "required_keys": {
+            "foo": {"type": "dict", "extra_keys_schema": {"type": "string"}},
+            "baz": {"type": "dict", "extra_keys_schema": {"type": "int"}},
+        },
+    }
+
+    dct = {
+        "foo": {"bar": "ok"},
+        "baz": "${this.foo}",
+    }
+
+    # when
+    result = resolve(dct, schema)
+
+    # then
+    assert result["baz"] == {"bar": "ok"}
 
 
 def test_interpolation_can_use_external_variables():
@@ -377,7 +417,6 @@ def test_interpolation_is_not_confused_by_different_jinja_syntax():
 
 
 def test_interpolation_from_deeply_nested_list():
-
     # given
     schema = {
         "type": "dict",
@@ -650,7 +689,6 @@ def test_exception_when_cannot_resolve_external_variable():
 
 def test_preserve_type():
     class UserDict(dict):
-
         something = 80
 
     # given
