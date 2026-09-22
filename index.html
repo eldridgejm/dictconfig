@@ -8,14 +8,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>dictconfig &mdash; dictconfig 0.1.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
-      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="_static/documentation_options.js?v=01f34227"></script>
-      <script src="_static/doctools.js?v=9bcbadda"></script>
-      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" /> 
@@ -135,22 +135,22 @@ value of <code class="docutils literal notranslate"><span class="pre">release-da
 YAML loader, the result will be the below dictionary, where the values of each
 field are simply the literal values from the YAML file:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
-    <span class="s1">&#39;release-date&#39;</span><span class="p">:</span> <span class="s1">&#39;2025-01-10&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;due&#39;</span><span class="p">:</span> <span class="s1">&#39;7 days after ${this.release-date}&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
-    <span class="s1">&#39;y&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
-    <span class="s1">&#39;z&#39;</span><span class="p">:</span> <span class="s1">&#39;2 * $</span><span class="si">{this.x}</span><span class="s1"> + $</span><span class="si">{this.y}</span><span class="s1">&#39;</span>
+    <span class="s1">'release-date'</span><span class="p">:</span> <span class="s1">'2025-01-10'</span><span class="p">,</span>
+    <span class="s1">'due'</span><span class="p">:</span> <span class="s1">'7 days after ${this.release-date}'</span><span class="p">,</span>
+    <span class="s1">'x'</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="s1">'y'</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="s1">'z'</span><span class="p">:</span> <span class="s1">'2 * $</span><span class="si">{this.x}</span><span class="s1"> + $</span><span class="si">{this.y}</span><span class="s1">'</span>
  <span class="p">}</span>
 </pre></div>
 </div>
 <p><cite>dictconfig</cite> takes this dictionary as input and “resolves” references and calculated
 values to obtain the following dictionary:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
-    <span class="s1">&#39;release-date&#39;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">(</span><span class="mi">2025</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>
-    <span class="s1">&#39;due&#39;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">(</span><span class="mi">2025</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">17</span><span class="p">),</span>
-    <span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
-    <span class="s1">&#39;y&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
-    <span class="s1">&#39;z&#39;</span><span class="p">:</span> <span class="mi">23</span>
+    <span class="s1">'release-date'</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">(</span><span class="mi">2025</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>
+    <span class="s1">'due'</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">(</span><span class="mi">2025</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">17</span><span class="p">),</span>
+    <span class="s1">'x'</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="s1">'y'</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="s1">'z'</span><span class="p">:</span> <span class="mi">23</span>
 <span class="p">}</span>
 </pre></div>
 </div>
@@ -206,42 +206,42 @@ of resolution) can be used in configuration values. The configuration file is
 the same as before, but now we have an external variable <cite>today</cite> that is used
 in the calculation of the <cite>tomorrow</cite> field:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">schema</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;dict&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;required_keys&quot;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">},</span>
-        <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">},</span>
-        <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">},</span>
-        <span class="s2">&quot;release_date&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;date&quot;</span><span class="p">},</span>
-        <span class="s2">&quot;due&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;date&quot;</span><span class="p">},</span>
-        <span class="s2">&quot;tomorrow&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;date&quot;</span><span class="p">},</span>
+    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"dict"</span><span class="p">,</span>
+    <span class="s2">"required_keys"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"x"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"integer"</span><span class="p">},</span>
+        <span class="s2">"y"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"integer"</span><span class="p">},</span>
+        <span class="s2">"z"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"integer"</span><span class="p">},</span>
+        <span class="s2">"release_date"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"date"</span><span class="p">},</span>
+        <span class="s2">"due"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"date"</span><span class="p">},</span>
+        <span class="s2">"tomorrow"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"date"</span><span class="p">},</span>
     <span class="p">}</span>
 <span class="p">}</span>
 
 <span class="n">raw_configuration</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s1">&#39;release_date&#39;</span><span class="p">:</span> <span class="s1">&#39;2025-01-10&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;due&#39;</span><span class="p">:</span> <span class="s1">&#39;7 days after $</span><span class="si">{this.release_date}</span><span class="s1">&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;tomorrow&#39;</span><span class="p">:</span> <span class="s1">&#39;1 day after $</span><span class="si">{today}</span><span class="s1">&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
-    <span class="s1">&#39;y&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
-    <span class="s1">&#39;z&#39;</span><span class="p">:</span> <span class="s1">&#39;2 * $</span><span class="si">{this.x}</span><span class="s1"> + $</span><span class="si">{this.y}</span><span class="s1">&#39;</span>
+    <span class="s1">'release_date'</span><span class="p">:</span> <span class="s1">'2025-01-10'</span><span class="p">,</span>
+    <span class="s1">'due'</span><span class="p">:</span> <span class="s1">'7 days after $</span><span class="si">{this.release_date}</span><span class="s1">'</span><span class="p">,</span>
+    <span class="s1">'tomorrow'</span><span class="p">:</span> <span class="s1">'1 day after $</span><span class="si">{today}</span><span class="s1">'</span><span class="p">,</span>
+    <span class="s1">'x'</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="s1">'y'</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="s1">'z'</span><span class="p">:</span> <span class="s1">'2 * $</span><span class="si">{this.x}</span><span class="s1"> + $</span><span class="si">{this.y}</span><span class="s1">'</span>
 <span class="p">}</span>
 
 <span class="n">resolved_configuration</span> <span class="o">=</span> <span class="n">dictconfig</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span>
     <span class="n">raw_configuration</span><span class="p">,</span>
     <span class="n">schema</span><span class="p">,</span>
-    <span class="n">external_variables</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;today&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">(</span><span class="mi">2025</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">7</span><span class="p">)}</span>
+    <span class="n">external_variables</span><span class="o">=</span><span class="p">{</span><span class="s2">"today"</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">(</span><span class="mi">2025</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">7</span><span class="p">)}</span>
 <span class="p">)</span>
 
 <span class="n">pprint</span><span class="p">(</span><span class="n">resolved_configuration</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The result is:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>{&#39;due&#39;: datetime.date(2025, 1, 17),
- &#39;release_date&#39;: datetime.date(2025, 1, 10),
- &#39;tomorrow&#39;: datetime.date(2025, 1, 8),
- &#39;x&#39;: 10,
- &#39;y&#39;: 3,
- &#39;z&#39;: 23}
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>{'due': datetime.date(2025, 1, 17),
+ 'release_date': datetime.date(2025, 1, 10),
+ 'tomorrow': datetime.date(2025, 1, 8),
+ 'x': 10,
+ 'y': 3,
+ 'z': 23}
 </pre></div>
 </div>
 <p>A usecase of this feature is to allow configurations files to reference values
@@ -255,21 +255,21 @@ the <cite>resolve</cite> function.</p>
 required key (“z”) is missing. <a class="reference internal" href="#dictconfig.resolve" title="dictconfig.resolve"><code class="xref py py-func docutils literal notranslate"><span class="pre">dictconfig.resolve()</span></code></a> will catch this when it
 does its validation and will raise a <code class="xref py py-class docutils literal notranslate"><span class="pre">dictconfig.exceptions.ResolutionError</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">schema</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;dict&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;required_keys&quot;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">},</span>
-        <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">},</span>
-        <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">},</span>
-        <span class="s2">&quot;release_date&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;date&quot;</span><span class="p">},</span>
-        <span class="s2">&quot;due&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;date&quot;</span><span class="p">},</span>
+    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"dict"</span><span class="p">,</span>
+    <span class="s2">"required_keys"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"x"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"integer"</span><span class="p">},</span>
+        <span class="s2">"y"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"integer"</span><span class="p">},</span>
+        <span class="s2">"z"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"integer"</span><span class="p">},</span>
+        <span class="s2">"release_date"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"date"</span><span class="p">},</span>
+        <span class="s2">"due"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"date"</span><span class="p">},</span>
     <span class="p">}</span>
 <span class="p">}</span>
 
 <span class="n">raw_configuration</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s1">&#39;release_date&#39;</span><span class="p">:</span> <span class="s1">&#39;2025-01-10&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;due&#39;</span><span class="p">:</span> <span class="s1">&#39;7 days after $</span><span class="si">{this.release_date}</span><span class="s1">&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
-    <span class="s1">&#39;y&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="s1">'release_date'</span><span class="p">:</span> <span class="s1">'2025-01-10'</span><span class="p">,</span>
+    <span class="s1">'due'</span><span class="p">:</span> <span class="s1">'7 days after $</span><span class="si">{this.release_date}</span><span class="s1">'</span><span class="p">,</span>
+    <span class="s1">'x'</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="s1">'y'</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
 <span class="p">}</span>
 
 <span class="k">try</span><span class="p">:</span>
@@ -279,7 +279,7 @@ does its validation and will raise a <code class="xref py py-class docutils lite
 </pre></div>
 </div>
 <p>The error message is:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>&#39;Cannot resolve keypath: &quot;z&quot;: Missing required key.&#39;
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>'Cannot resolve keypath: "z": Missing required key.'
 </pre></div>
 </div>
 </section>
@@ -289,19 +289,19 @@ does its validation and will raise a <code class="xref py py-class docutils lite
 missing. In the example below, the key “x” is optional and has a default value
 of 10:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">schema</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;dict&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;required_keys&quot;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">},</span>
-        <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">},</span>
+    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"dict"</span><span class="p">,</span>
+    <span class="s2">"required_keys"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"y"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"integer"</span><span class="p">},</span>
+        <span class="s2">"z"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"integer"</span><span class="p">},</span>
     <span class="p">},</span>
-    <span class="s2">&quot;optional_keys&quot;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">,</span> <span class="s2">&quot;default&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">},</span>
+    <span class="s2">"optional_keys"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"x"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"integer"</span><span class="p">,</span> <span class="s2">"default"</span><span class="p">:</span> <span class="mi">10</span><span class="p">},</span>
     <span class="p">}</span>
 <span class="p">}</span>
 
 <span class="n">raw_configuration</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s1">&#39;y&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
-    <span class="s1">&#39;z&#39;</span><span class="p">:</span> <span class="s1">&#39;2 * $</span><span class="si">{this.x}</span><span class="s1"> + $</span><span class="si">{this.y}</span><span class="s1">&#39;</span>
+    <span class="s1">'y'</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="s1">'z'</span><span class="p">:</span> <span class="s1">'2 * $</span><span class="si">{this.x}</span><span class="s1"> + $</span><span class="si">{this.y}</span><span class="s1">'</span>
 <span class="p">}</span>
 
 <span class="n">resolved_configuration</span> <span class="o">=</span> <span class="n">dictconfig</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">raw_configuration</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span>
@@ -309,7 +309,7 @@ of 10:</p>
 </pre></div>
 </div>
 <p>The result is:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>{&#39;x&#39;: 10, &#39;y&#39;: 3, &#39;z&#39;: 23}
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>{'x': 10, 'y': 3, 'z': 23}
 </pre></div>
 </div>
 </section>
@@ -319,20 +319,20 @@ of 10:</p>
 just dictionaries. The schema below describes a list of dictionaries, each dictionary
 containing a string key <cite>name</cite> and an integer key <cite>age</cite>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">schema</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;list&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;element_schema&quot;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;dict&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;required_keys&quot;</span><span class="p">:</span> <span class="p">{</span>
-            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">},</span>
-            <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">},</span>
+    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"list"</span><span class="p">,</span>
+    <span class="s2">"element_schema"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"dict"</span><span class="p">,</span>
+        <span class="s2">"required_keys"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"name"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"string"</span><span class="p">},</span>
+            <span class="s2">"age"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"integer"</span><span class="p">},</span>
         <span class="p">}</span>
     <span class="p">}</span>
 <span class="p">}</span>
 
 <span class="n">raw_configuration</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Alice&quot;</span><span class="p">,</span> <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="mi">30</span><span class="p">},</span>
-    <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Bob&quot;</span><span class="p">,</span> <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="mi">25</span><span class="p">},</span>
-    <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Charlie&quot;</span><span class="p">,</span> <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="mi">35</span><span class="p">},</span>
+    <span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="s2">"Alice"</span><span class="p">,</span> <span class="s2">"age"</span><span class="p">:</span> <span class="mi">30</span><span class="p">},</span>
+    <span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="s2">"Bob"</span><span class="p">,</span> <span class="s2">"age"</span><span class="p">:</span> <span class="mi">25</span><span class="p">},</span>
+    <span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="s2">"Charlie"</span><span class="p">,</span> <span class="s2">"age"</span><span class="p">:</span> <span class="mi">35</span><span class="p">},</span>
 <span class="p">]</span>
 
 <span class="n">resolved_configuration</span> <span class="o">=</span> <span class="n">dictconfig</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">raw_configuration</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span>
@@ -340,9 +340,9 @@ containing a string key <cite>name</cite> and an integer key <cite>age</cite>:</
 </pre></div>
 </div>
 <p>The result is:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[{&#39;age&#39;: 30, &#39;name&#39;: &#39;Alice&#39;},
- {&#39;age&#39;: 25, &#39;name&#39;: &#39;Bob&#39;},
- {&#39;age&#39;: 35, &#39;name&#39;: &#39;Charlie&#39;}]
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[{'age': 30, 'name': 'Alice'},
+ {'age': 25, 'name': 'Bob'},
+ {'age': 35, 'name': 'Charlie'}]
 </pre></div>
 </div>
 </section>
@@ -355,16 +355,16 @@ dictionary with top-level keys “number” and “videos”, where the value of
 “videos” is a list of dictionaries, each containing a string key <cite>title</cite> and an
 integer key <cite>url</cite>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">schema</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;dict&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;required_keys&quot;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">&quot;number&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">},</span>
-        <span class="s2">&quot;videos&quot;</span><span class="p">:</span> <span class="p">{</span>
-            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;list&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;element_schema&quot;</span><span class="p">:</span> <span class="p">{</span>
-                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;dict&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;required_keys&quot;</span><span class="p">:</span> <span class="p">{</span>
-                    <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">},</span>
-                    <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">},</span>
+    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"dict"</span><span class="p">,</span>
+    <span class="s2">"required_keys"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"number"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"integer"</span><span class="p">},</span>
+        <span class="s2">"videos"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"list"</span><span class="p">,</span>
+            <span class="s2">"element_schema"</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"dict"</span><span class="p">,</span>
+                <span class="s2">"required_keys"</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">"title"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"string"</span><span class="p">},</span>
+                    <span class="s2">"url"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"integer"</span><span class="p">},</span>
                 <span class="p">}</span>
             <span class="p">}</span>
         <span class="p">}</span>
@@ -372,11 +372,11 @@ integer key <cite>url</cite>:</p>
 <span class="p">}</span>
 
 <span class="n">raw_configuration</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">&quot;number&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
-    <span class="s2">&quot;videos&quot;</span><span class="p">:</span> <span class="p">[</span>
-        <span class="p">{</span><span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Video 1&quot;</span><span class="p">,</span> <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span>
-        <span class="p">{</span><span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Video 2&quot;</span><span class="p">,</span> <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">},</span>
-        <span class="p">{</span><span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Video 3&quot;</span><span class="p">,</span> <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">},</span>
+    <span class="s2">"number"</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="s2">"videos"</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span><span class="s2">"title"</span><span class="p">:</span> <span class="s2">"Video 1"</span><span class="p">,</span> <span class="s2">"url"</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">"title"</span><span class="p">:</span> <span class="s2">"Video 2"</span><span class="p">,</span> <span class="s2">"url"</span><span class="p">:</span> <span class="mi">2</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">"title"</span><span class="p">:</span> <span class="s2">"Video 3"</span><span class="p">,</span> <span class="s2">"url"</span><span class="p">:</span> <span class="mi">3</span><span class="p">},</span>
     <span class="p">]</span>
 <span class="p">}</span>
 
@@ -385,10 +385,10 @@ integer key <cite>url</cite>:</p>
 </pre></div>
 </div>
 <p>The result is:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>{&#39;number&#39;: 3,
- &#39;videos&#39;: [{&#39;title&#39;: &#39;Video 1&#39;, &#39;url&#39;: 1},
-            {&#39;title&#39;: &#39;Video 2&#39;, &#39;url&#39;: 2},
-            {&#39;title&#39;: &#39;Video 3&#39;, &#39;url&#39;: 3}]}
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>{'number': 3,
+ 'videos': [{'title': 'Video 1', 'url': 1},
+            {'title': 'Video 2', 'url': 2},
+            {'title': 'Video 3', 'url': 3}]}
 </pre></div>
 </div>
 </section>
@@ -399,18 +399,18 @@ that you can use all the features of <cite>jinja2</cite> in your configuration f
 example, <cite>jinja2</cite> allows for a kind of ternaly operator which can be used to
 dynamically set the value of a key based on a condition.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">schema</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;dict&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;required_keys&quot;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">},</span>
-        <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">},</span>
-        <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">},</span>
+    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"dict"</span><span class="p">,</span>
+    <span class="s2">"required_keys"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"x"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"integer"</span><span class="p">},</span>
+        <span class="s2">"y"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"integer"</span><span class="p">},</span>
+        <span class="s2">"z"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"integer"</span><span class="p">},</span>
     <span class="p">}</span>
 <span class="p">}</span>
 
 <span class="n">raw_configuration</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
-    <span class="s1">&#39;y&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
-    <span class="s1">&#39;z&#39;</span><span class="p">:</span> <span class="s1">&#39;${ this.x if this.x &gt; this.y else this.y }&#39;</span>
+    <span class="s1">'x'</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="s1">'y'</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="s1">'z'</span><span class="p">:</span> <span class="s1">'${ this.x if this.x &gt; this.y else this.y }'</span>
 <span class="p">}</span>
 
 <span class="n">resolved_configuration</span> <span class="o">=</span> <span class="n">dictconfig</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">raw_configuration</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span>
@@ -418,7 +418,7 @@ dynamically set the value of a key based on a condition.</p>
 </pre></div>
 </div>
 <p>The result is:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>{&#39;x&#39;: 10, &#39;y&#39;: 3, &#39;z&#39;: 10}
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>{'x': 10, 'y': 3, 'z': 10}
 </pre></div>
 </div>
 </section>
@@ -432,12 +432,12 @@ may be able to get a start by copying and modifying the examples above.</p>
 configuration dictionary as a tree.  For example, take the following dictionary
 of options:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
-     <span class="n">title</span> <span class="o">=</span> <span class="s1">&#39;My Book&#39;</span>
+     <span class="n">title</span> <span class="o">=</span> <span class="s1">'My Book'</span>
      <span class="n">release</span> <span class="o">=</span> <span class="p">{</span>
-         <span class="n">date</span> <span class="o">=</span> <span class="s1">&#39;2021-10-10&#39;</span><span class="p">,</span>
-         <span class="n">via</span> <span class="o">=</span> <span class="s1">&#39;email&#39;</span>
+         <span class="n">date</span> <span class="o">=</span> <span class="s1">'2021-10-10'</span><span class="p">,</span>
+         <span class="n">via</span> <span class="o">=</span> <span class="s1">'email'</span>
      <span class="p">},</span>
-     <span class="n">authors</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;me&#39;</span><span class="p">,</span> <span class="s1">&#39;you&#39;</span><span class="p">,</span> <span class="s1">&#39;everyone&#39;</span><span class="p">]</span>
+     <span class="n">authors</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'me'</span><span class="p">,</span> <span class="s1">'you'</span><span class="p">,</span> <span class="s1">'everyone'</span><span class="p">]</span>
 <span class="p">}</span>
 </pre></div>
 </div>
@@ -456,26 +456,26 @@ configuration tree.  The “grammar” of a schema is roughly as follows:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>&lt;SCHEMA&gt; = (&lt;DICT_SCHEMA&gt; | &lt;LIST_SCHEMA&gt; | &lt;LEAF_SCHEMA&gt; | &lt;ANY_SCHEMA&gt;)
 
 &lt;DICT_SCHEMA&gt; = {
-    &quot;type&quot;: &quot;dict&quot;,
-    [&quot;required_keys&quot;: {&lt;KEY_NAME&gt;: &lt;SCHEMA&gt;, ...}],
-    [&quot;optional_keys&quot;: {&lt;KEY_NAME&gt;: (&lt;SCHEMA&gt; | &lt;SCHEMA_WITH_DEFAULT&gt;), ...}],
-    [&quot;extra_keys_schema&quot;: &lt;SCHEMA&gt;],
-    [&quot;nullable&quot;: (True | False)],
+    "type": "dict",
+    ["required_keys": {&lt;KEY_NAME&gt;: &lt;SCHEMA&gt;, ...}],
+    ["optional_keys": {&lt;KEY_NAME&gt;: (&lt;SCHEMA&gt; | &lt;SCHEMA_WITH_DEFAULT&gt;), ...}],
+    ["extra_keys_schema": &lt;SCHEMA&gt;],
+    ["nullable": (True | False)],
 }
 
 &lt;LIST_SCHEMA&gt; = {
-    &quot;type&quot;: &quot;list&quot;,
-    &quot;element_schema&quot;: &lt;SCHEMA&gt;,
-    [&quot;nullable&quot;: (True | False)]
+    "type": "list",
+    "element_schema": &lt;SCHEMA&gt;,
+    ["nullable": (True | False)]
 }
 
 LEAF_SCHEMA = {
-    &quot;type&quot;: (&quot;string&quot; | &quot;integer&quot; | &quot;float&quot; | &quot;boolean&quot; | &quot;date&quot; | &quot;datetime&quot;),
-    [&quot;nullable&quot;: (True | False)]
+    "type": ("string" | "integer" | "float" | "boolean" | "date" | "datetime"),
+    ["nullable": (True | False)]
 }
 
 &lt;ANY_SCHEMA&gt; = {
-    &quot;type&quot;: &quot;any&quot;
+    "type": "any"
 }
 
 &lt;SCHEMA_WITH_DEFAULT&gt; = (
@@ -498,7 +498,7 @@ type. By default, the leaf values are not nullable.</p>
 <p>Resolving a configuration is done via the <a class="reference internal" href="#dictconfig.resolve" title="dictconfig.resolve"><code class="xref py py-func docutils literal notranslate"><span class="pre">dictconfig.resolve()</span></code></a> function:</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="dictconfig.resolve">
-<span class="sig-prename descclassname"><span class="pre">dictconfig.</span></span><span class="sig-name descname"><span class="pre">resolve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">raw_cfg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">external_variables=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">override_parsers=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema_validator=&lt;function</span> <span class="pre">validate_schema&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preserve_type=False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dictconfig.resolve" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">dictconfig.</span></span><span class="sig-name descname"><span class="pre">resolve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">raw_cfg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">external_variables</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">override_parsers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema_validator</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;function</span> <span class="pre">validate_schema&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preserve_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dictconfig.resolve" title="Link to this definition"></a></dt>
 <dd><p>Resolve a raw configuration by interpolating and parsing its entries.</p>
 <p>The raw configuration can be a dictionary, list, or a non-container type;
 resolution will be done recursively. In any case, the provided schema must
@@ -527,9 +527,9 @@ configuration.</p>
 that many powerful <cite>Jinja2</cite> features can be used. For example, a <cite>Jinja2</cite> supports
 a ternary operator, so dictionaries can contain expressions like the following:”</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
-    <span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
-    <span class="s1">&#39;y&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
-    <span class="s1">&#39;z&#39;</span><span class="p">:</span> <span class="s1">&#39;${ this.x if this.x &gt; this.y else this.y }&#39;</span>
+    <span class="s1">'x'</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="s1">'y'</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="s1">'z'</span><span class="p">:</span> <span class="s1">'${ this.x if this.x &gt; this.y else this.y }'</span>
 <span class="p">}</span>
 </pre></div>
 </div>
@@ -634,7 +634,7 @@ numeric type.</p>
 <p class="rubric">Example</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">dictconfig.parsers</span><span class="w"> </span><span class="kn">import</span> <span class="n">arithmetic</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">parser</span> <span class="o">=</span> <span class="n">arithmetic</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">parser</span><span class="p">(</span><span class="s1">&#39;(7 + 3) / 5&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">parser</span><span class="p">(</span><span class="s1">'(7 + 3) / 5'</span><span class="p">)</span>
 <span class="go">2</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">parser</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
 <span class="go">42</span>
@@ -648,7 +648,7 @@ numeric type.</p>
 <dd><p>Parses boolean logic expressions.</p>
 <p class="rubric">Example</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">dictconfig.parsers</span><span class="w"> </span><span class="kn">import</span> <span class="n">logic</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">logic</span><span class="p">(</span><span class="s1">&#39;True and (False or True)&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">logic</span><span class="p">(</span><span class="s1">'True and (False or True)'</span><span class="p">)</span>
 <span class="go">True</span>
 </pre></div>
 </div>
@@ -671,13 +671,13 @@ e.g., “first monday, wednesday after 2021-10-10”</p></li>
 </div></blockquote>
 <p class="rubric">Example</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">dictconfig.parsers</span><span class="w"> </span><span class="kn">import</span> <span class="n">smartdate</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">smartdate</span><span class="p">(</span><span class="s1">&#39;2021-10-01&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">smartdate</span><span class="p">(</span><span class="s1">'2021-10-01'</span><span class="p">)</span>
 <span class="go">datetime.date(2021, 10, 1)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">smartdate</span><span class="p">(</span><span class="s1">&#39;1 day after 2021-10-01&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">smartdate</span><span class="p">(</span><span class="s1">'1 day after 2021-10-01'</span><span class="p">)</span>
 <span class="go">datetime.date(2021, 10, 2)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">smartdate</span><span class="p">(</span><span class="s1">&#39;3 days before 2021-10-05&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">smartdate</span><span class="p">(</span><span class="s1">'3 days before 2021-10-05'</span><span class="p">)</span>
 <span class="go">datetime.date(2021, 10, 2)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">smartdate</span><span class="p">(</span><span class="s1">&#39;first monday after 2021-09-10&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">smartdate</span><span class="p">(</span><span class="s1">'first monday after 2021-09-10'</span><span class="p">)</span>
 <span class="go">datetime.date(2021, 9, 13)</span>
 </pre></div>
 </div>
