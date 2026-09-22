@@ -16,8 +16,10 @@
           python3Packages.buildPythonPackage {
             name = "dictconfig";
             src = ./.;
+            pyproject = true;
+            build-system = [ python3Packages.setuptools ];
             propagatedBuildInputs = with python3Packages; [jinja2];
-            nativeBuildInputs = with python3Packages; [pytest black ipython sphinx sphinx_rtd_theme];
+            nativeBuildInputs = (with python3Packages; [pytest black ipython sphinx]) ++ [(python3Packages.sphinx-rtd-theme or python3Packages.sphinx_rtd_theme)];
           }
     );
 
